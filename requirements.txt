@@ -1,0 +1,42 @@
+# ---- Core Web ----
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+jinja2==3.1.4
+pydantic==2.10.3
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# ---- Azure (RBAC) ----
+azure-identity==1.19.0
+azure-search-documents==11.5.2
+openai==1.59.6
+
+# ---- LangChain / LangGraph ----
+langchain>=0.3.13,<0.4
+langchain-core>=0.3.28,<0.4
+langchain-openai>=0.2.14,<0.3
+langchain-community>=0.3.13,<0.4
+langgraph>=0.2.60,<0.3
+
+# ---- MCP ----
+fastmcp==0.4.1
+
+# ---- Document Processing ----
+pypdf==5.1.0
+python-docx==1.1.2
+python-pptx==1.0.2
+openpyxl==3.1.5
+
+# ---- Vector Store ----
+faiss-cpu==1.9.0.post1
+tiktoken==0.8.0
+
+# ---- Data / Analytics ----
+SQLAlchemy==2.0.36
+pandas==2.2.3
+numpy==1.26.4
+
+# ---- Auth ----
+PyJWT[crypto]==2.10.1
+itsdangerous==2.2.0

@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEXORA — Litigation Lifecycle Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Background ambient orbs -->
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+
+  <!-- ============ HEADER ============ -->
+  <header class="app-header glass">
+    <div class="header-left">
+      <div class="logo-mark">L</div>
+      <div>
+        <h1 class="brand-name">LEXORA</h1>
+        <span class="brand-tag-mini">Litigation Lifecycle • Agentic AI</span>
+      </div>
+    </div>
+
+    <nav class="nav-tabs" id="navTabs">
+      <button class="tab active" data-view="dashboard">Dashboard</button>
+      <button class="tab" data-view="cases">Cases</button>
+      <button class="tab" data-view="documents">Documents</button>
+      <button class="tab" data-view="chat">Agent</button>
+      <button class="tab" data-view="analytics">Analytics</button>
+      <button class="tab" data-view="calendar">Calendar</button>
+      <button class="tab" data-view="notifications">Notifications</button>
+      <button class="tab" data-view="pitch">Pitch</button>
+    </nav>
+
+    <div class="header-right">
+      <button id="themeToggle" class="theme-toggle" title="Toggle theme">
+        <span class="sun">☀</span><span class="moon">☾</span>
+      </button>
+      <div class="who" id="who"></div>
+      <button id="logoutBtn" class="btn-ghost">Sign out</button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="app-main">
+
+    <!-- DASHBOARD -->
+    <section class="view active" data-view="dashboard">
+      <div class="view-header">
+        <div>
+          <h2>Executive Dashboard</h2>
+          <p class="muted">Real-time portfolio health for senior leadership.</p>
+        </div>
+        <button id="predictorBtn" class="btn-primary predictor-launch">
+          ⚖ Outcome Predictor
+        </button>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="grid-2">
+        <div class="glass card">
+          <h3>Caseload by Status</h3>
+          <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+        </div>
+        <div class="glass card">
+          <h3>Cases by Practice Area</h3>
+          <div class="chart-box"><canvas id="chartPractice"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="glass card">
+          <h3>Monthly Filings (12 mo)</h3>
+          <div class="chart-box"><canvas id="chartFilings"></canvas></div>
+        </div>
+        <div class="glass card">
+          <h3>Portfolio Value by Practice (USD)</h3>
+          <div class="chart-box"><canvas id="chartValue"></canvas></div>
+        </div>
+      </div>
+
+      <div class="glass card fill">
+        <div class="card-head">
+          <h3>AI-Detected Patterns</h3>
+          <span class="muted" id="patternEngine">auto-refreshed from `portfolio_analytics` tool</span>
+        </div>
+        <div id="patternList" class="pattern-list scroll-body"></div>
+      </div>
+    </section>
+
+    <!-- CASES -->
+    <section class="view" data-view="cases">
+      <div class="view-header">
+        <h2>Case Portfolio</h2>
+        <div class="filter-row">
+          <input id="caseSearch" placeholder="Search cases, clients, numbers…" />
+          <select id="caseStatus">
+            <option value="">All Statuses</option>
+          </select>
+          <select id="caseJuris">
+            <option value="">All Jurisdictions</option>
+          </select>
+          <button id="newCaseBtn" class="btn-primary">+ New Case</button>
+        </div>
+      </div>
+      <div class="glass card fill">
+        <div class="table-wrap scroll-body">
+          <table class="data-table" id="caseTable">
+            <thead><tr>
+              <th>Case #</th><th>Title</th><th>Client</th><th>Practice</th>
+              <th>Jurisdiction</th><th>Status</th><th>Priority</th><th>Value</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="caseDetail" class="glass card hidden">
+        <div class="card-head"><h3 id="cdTitle"></h3>
+          <button id="cdClose" class="btn-ghost">Close</button></div>
+        <div id="cdBody"></div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section class="view" data-view="documents">
+      <div class="view-header">
+        <h2>Document Intelligence</h2>
+        <p class="muted">Drop PDF, DOCX, PPTX, JSON or TXT. LEXORA extracts,
+          classifies, summarizes and embeds for semantic search — all in real
+          time.</p>
+      </div>
+
+      <div class="glass card dropzone-card">
+        <div id="dropzone" class="dropzone">
+          <div class="dz-icon">⤓</div>
+          <p><strong>Drop a file here</strong> to upload</p>
+          <p class="muted small">Optionally tag with a case before uploading</p>
+          <input type="file" id="fileInput" hidden
+                 accept=".pdf,.docx,.pptx,.json,.txt,.md" />
+          <div class="dz-controls">
+            <select id="uploadCaseId"><option value="">No case (general)</option></select>
+            <button id="browseBtn" class="btn-primary">Browse files</button>
+          </div>
+        </div>
+        <div id="uploadProgress" class="upload-progress"></div>
+      </div>
+
+      <div class="glass card fill">
+        <h3>Recent Documents</h3>
+        <div class="table-wrap scroll-body">
+          <table class="data-table" id="docTable">
+            <thead><tr>
+              <th>File</th><th>Case</th><th>Type</th><th>Pages</th>
+              <th>Category</th><th>Indexed</th><th>Summary</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAT / AGENT -->
+    <section class="view" data-view="chat">
+      <div class="view-header">
+        <h2>LEXORA Agent</h2>
+        <p class="muted">LangGraph + Azure OpenAI + FastMCP tools. Ask anything
+          about cases, documents, deadlines or analytics.</p>
+      </div>
+
+      <div class="chat-shell">
+        <aside class="glass card chat-side">
+          <h3>Available MCP Tools</h3>
+          <div id="toolList" class="tool-list"></div>
+          <h3 style="margin-top:1.2rem">Try asking…</h3>
+          <div class="suggest-pills">
+            <button type="button" class="suggest-pill">Which state takes the longest to adjudicate?</button>
+            <button type="button" class="suggest-pill">Summarize all critical cases.</button>
+            <button type="button" class="suggest-pill">List my upcoming filing deadlines in the next 14 days.</button>
+            <button type="button" class="suggest-pill">Reschedule appointment 3 to next Tuesday 10am, reason "judge conflict".</button>
+            <button type="button" class="suggest-pill">Generate a case report for case 1.</button>
+          </div>
+        </aside>
+
+        <div class="glass card chat-main">
+          <div id="chatLog" class="chat-log"></div>
+          <div class="chat-input-row">
+            <textarea id="chatInput" rows="2"
+              placeholder="Ask LEXORA…  (Shift+Enter for newline)"></textarea>
+            <button id="chatSend" class="btn-primary">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="view" data-view="analytics">
+      <div class="view-header">
+        <h2>Pattern Analytics</h2>
+        <p class="muted">Cross-portfolio insights. Live SQL aggregations,
+          surfaced visually.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="glass card">
+          <h3>Avg. Adjudication Time by Jurisdiction (days)</h3>
+          <div class="chart-box tall"><canvas id="chartAdj"></canvas></div>
+        </div>
+        <div class="glass card">
+          <h3>Cases by Jurisdiction</h3>
+          <div class="chart-box tall"><canvas id="chartJuris"></canvas></div>
+        </div>
+      </div>
+
+      <div class="glass card fill">
+        <h3>Jurisdiction Insights</h3>
+        <div class="table-wrap scroll-body">
+          <table class="data-table" id="adjTable">
+            <thead><tr>
+              <th>Jurisdiction</th><th>Cases</th><th>Avg Days</th>
+              <th>Δ vs National</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="view" data-view="calendar">
+      <div class="view-header">
+        <h2>Upcoming Calendar</h2>
+        <p class="muted">Hearings, depositions, filings, and client meetings.</p>
+      </div>
+      <div class="glass card fill">
+        <div class="table-wrap scroll-body">
+          <table class="data-table" id="apptTable">
+            <thead><tr>
+              <th>When</th><th>Title</th><th>Type</th><th>Case</th>
+              <th>Location</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTIFICATIONS -->
+    <section class="view" data-view="notifications">
+      <div class="view-header">
+        <h2>Notification Center</h2>
+        <div class="filter-row">
+          <select id="ntChannel">
+            <option value="">All channels</option>
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+            <option value="inapp">In-app</option>
+          </select>
+          <select id="ntStatus">
+            <option value="">All statuses</option>
+            <option value="sent">Sent</option>
+            <option value="queued">Queued</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button id="ntRefresh" class="btn-ghost">Refresh</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="ntKpis"></div>
+
+      <div class="glass card fill">
+        <div class="card-head">
+          <h3>Activity Feed</h3>
+          <span class="muted" id="ntCount"></span>
+        </div>
+        <div class="scroll-body" id="ntFeed"></div>
+      </div>
+    </section>
+
+    <!-- PITCH DECK (CIO briefing) -->
+    <section class="view pd-view" data-view="pitch">
+      <div class="pd-stage" id="pdStage">
+
+        <!-- Ambient backdrop -->
+        <div class="pd-bg" aria-hidden="true">
+          <span class="pd-glow g1"></span>
+          <span class="pd-glow g2"></span>
+          <span class="pd-grid"></span>
+          <div class="pd-motes" id="pdMotes"></div>
+        </div>
+
+        <!-- Deck -->
+        <div class="pd-deck" id="pdDeck">
+
+          <!-- 1 · COVER -->
+          <section class="pd-slide pd-center active" data-slide="0">
+            <span class="pd-eyebrow c-violet" data-pd-anim>Executive Briefing · Office of the CIO</span>
+            <h1 class="pd-cover-title" data-pd-anim>LEXORA</h1>
+            <p class="pd-tagline" data-pd-anim>The agentic operating system for <em>litigation</em></p>
+            <div class="pd-meta" data-pd-anim>
+              <span class="pd-pill"><i class="dot v"></i>Agentic AI</span>
+              <span class="pd-pill"><i class="dot t"></i>Azure-native</span>
+              <span class="pd-pill"><i class="dot p"></i>Grounded RAG</span>
+              <span class="pd-pill"><i class="dot g"></i>Auditable</span>
+            </div>
+            <p class="pd-hint" data-pd-anim>Press <kbd>Space</kbd> or <kbd>→</kbd> to advance · click any card to explore</p>
+          </section>
+
+          <!-- 2 · CAPABILITIES (interactive → modal) -->
+          <section class="pd-slide" data-slide="1">
+            <span class="pd-eyebrow c-teal" data-pd-anim>What it does</span>
+            <h2 class="pd-h2" data-pd-anim>Four ways LEXORA moves matters <em>forward</em></h2>
+            <p class="pd-lede" data-pd-anim>Tap any capability to see exactly how it works.</p>
+            <div class="pd-cards" data-pd-anim>
+              <button class="pd-card" data-cap="intake" data-pd-anim>
+                <span class="pd-card-ico">🧾</span>
+                <span class="pd-card-t">Intelligent intake</span>
+                <span class="pd-card-s">Drop a complaint — AI extracts every field and opens the case</span>
+                <span class="pd-card-link">How it works ›</span>
+              </button>
+              <button class="pd-card" data-cap="rag" data-pd-anim>
+                <span class="pd-card-ico">📚</span>
+                <span class="pd-card-t">Document RAG</span>
+                <span class="pd-card-s">Ask questions across your filings — answers cite the page</span>
+                <span class="pd-card-link">How it works ›</span>
+              </button>
+              <button class="pd-card" data-cap="agent" data-pd-anim>
+                <span class="pd-card-ico">⚖️</span>
+                <span class="pd-card-t">Agent copilot</span>
+                <span class="pd-card-s">A tool-calling agent reasons over the whole portfolio</span>
+                <span class="pd-card-link">How it works ›</span>
+              </button>
+              <button class="pd-card" data-cap="predictor" data-pd-anim>
+                <span class="pd-card-ico">🔮</span>
+                <span class="pd-card-t">Outcome predictor</span>
+                <span class="pd-card-s">Transparent settlement &amp; duration estimates with evidence</span>
+                <span class="pd-card-link">How it works ›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- 3 · FITS HOW YOU WORK (interactive → modal) -->
+          <section class="pd-slide" data-slide="2">
+            <span class="pd-eyebrow c-amber" data-pd-anim>Built for how you work today</span>
+            <h2 class="pd-h2" data-pd-anim>Your matters, your data — <em>made intelligent</em></h2>
+            <p class="pd-lede" data-pd-anim>Tap any challenge to see how LEXORA answers it.</p>
+            <div class="pd-cards five" data-pd-anim>
+              <button class="pd-card" data-solve="scattered" data-pd-anim>
+                <span class="pd-card-ico">🗂️</span>
+                <span class="pd-card-t">Scattered tools</span>
+                <span class="pd-card-s">Matter data spread across a dozen systems</span>
+                <span class="pd-card-link">See how ›</span>
+              </button>
+              <button class="pd-card" data-solve="triage" data-pd-anim>
+                <span class="pd-card-ico">📄</span>
+                <span class="pd-card-t">Manual review</span>
+                <span class="pd-card-s">Associates read every page by hand</span>
+                <span class="pd-card-link">See how ›</span>
+              </button>
+              <button class="pd-card" data-solve="risk" data-pd-anim>
+                <span class="pd-card-ico">🎯</span>
+                <span class="pd-card-t">Blind on risk</span>
+                <span class="pd-card-s">No portfolio view of exposure</span>
+                <span class="pd-card-link">See how ›</span>
+              </button>
+              <button class="pd-card" data-solve="deadlines" data-pd-anim>
+                <span class="pd-card-ico">📅</span>
+                <span class="pd-card-t">Deadline chaos</span>
+                <span class="pd-card-s">Court dates tracked in scattered calendars</span>
+                <span class="pd-card-link">See how ›</span>
+              </button>
+              <button class="pd-card" data-solve="dms" data-pd-anim>
+                <span class="pd-card-ico">🔌</span>
+                <span class="pd-card-t">DMS silos</span>
+                <span class="pd-card-s">Documents locked in a separate system</span>
+                <span class="pd-card-link">See how ›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- 4 · WORKFLOW (animated pipeline) -->
+          <section class="pd-slide" data-slide="3">
+            <span class="pd-eyebrow c-pink" data-pd-anim>How it flows</span>
+            <h2 class="pd-h2" data-pd-anim>From a complaint to a <em>defensible</em> answer — in seconds</h2>
+            <div class="pd-flow" id="pdFlow" data-pd-anim>
+              <div class="pd-flow-track"><span class="pd-flow-beam" id="pdBeam"></span></div>
+              <div class="pd-flow-stages">
+                <div class="pd-stage-node" data-flow>
+                  <span class="pd-fn"><span class="pd-fn-ico">🧾</span></span>
+                  <span class="pd-fn-t">Intake</span>
+                  <span class="pd-fn-s">Drop a filing or paste a matter</span>
+                </div>
+                <div class="pd-stage-node" data-flow>
+                  <span class="pd-fn"><span class="pd-fn-ico">🧠</span></span>
+                  <span class="pd-fn-t">Understand</span>
+                  <span class="pd-fn-s">AI extracts parties, facts &amp; fields</span>
+                </div>
+                <div class="pd-stage-node" data-flow>
+                  <span class="pd-fn"><span class="pd-fn-ico">🔎</span></span>
+                  <span class="pd-fn-t">Retrieve</span>
+                  <span class="pd-fn-s">Vector search over your documents</span>
+                </div>
+                <div class="pd-stage-node" data-flow>
+                  <span class="pd-fn"><span class="pd-fn-ico">⚙️</span></span>
+                  <span class="pd-fn-t">Reason</span>
+                  <span class="pd-fn-s">The agent orchestrates the right tools</span>
+                </div>
+                <div class="pd-stage-node" data-flow>
+                  <span class="pd-fn"><span class="pd-fn-ico">✨</span></span>
+                  <span class="pd-fn-t">Answer</span>
+                  <span class="pd-fn-s">A cited recommendation you can defend</span>
+                </div>
+              </div>
+            </div>
+            <p class="pd-quote" data-pd-anim>No copy-paste. No black box. <em>Every answer carries its receipts.</em></p>
+          </section>
+
+          <!-- 5 · PLATFORM TOUR (jump to tabs) -->
+          <section class="pd-slide" data-slide="4">
+            <span class="pd-eyebrow c-teal" data-pd-anim>One platform · every view</span>
+            <h2 class="pd-h2" data-pd-anim>Everything the litigation desk needs, in one place</h2>
+            <p class="pd-lede" data-pd-anim>Click any tile to open the live product.</p>
+            <div class="pd-tour" data-pd-anim>
+              <button class="pd-tile" data-goto-view="dashboard" data-pd-anim>
+                <span class="pd-tile-ico">📊</span>
+                <span class="pd-tile-t">Executive Dashboard</span>
+                <span class="pd-tile-s">Portfolio health, KPIs &amp; AI-detected patterns</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+              <button class="pd-tile" data-goto-view="cases" data-pd-anim>
+                <span class="pd-tile-ico">⚖️</span>
+                <span class="pd-tile-t">Case Portfolio</span>
+                <span class="pd-tile-s">Every matter, with AI-assisted intake</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+              <button class="pd-tile" data-goto-view="documents" data-pd-anim>
+                <span class="pd-tile-ico">📁</span>
+                <span class="pd-tile-t">Documents</span>
+                <span class="pd-tile-s">Upload, index &amp; question your filings</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+              <button class="pd-tile" data-goto-view="chat" data-pd-anim>
+                <span class="pd-tile-ico">🤖</span>
+                <span class="pd-tile-t">Agent</span>
+                <span class="pd-tile-s">Ask the copilot across your whole portfolio</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+              <button class="pd-tile" data-goto-view="analytics" data-pd-anim>
+                <span class="pd-tile-ico">📈</span>
+                <span class="pd-tile-t">Analytics</span>
+                <span class="pd-tile-s">Trends, exposure &amp; outcome prediction</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+              <button class="pd-tile" data-goto-view="calendar" data-pd-anim>
+                <span class="pd-tile-ico">🗓️</span>
+                <span class="pd-tile-t">Calendar</span>
+                <span class="pd-tile-s">Court dates, deadlines &amp; appointments</span>
+                <span class="pd-tile-go">Open ›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- 6 · IMPACT (animated counters) -->
+          <section class="pd-slide" data-slide="5">
+            <span class="pd-eyebrow c-green" data-pd-anim>The impact</span>
+            <h2 class="pd-h2" data-pd-anim>Measurable outcomes — <em>governed &amp; private</em></h2>
+            <p class="pd-lede" data-pd-anim>Runs inside your Azure tenant. Data never leaves your boundary.</p>
+            <div class="pd-stats" data-pd-anim>
+              <div class="pd-stat"><div class="pd-stat-num" data-count="70" data-suffix="%">0</div><div class="pd-stat-lbl">Faster intake</div></div>
+              <div class="pd-stat"><div class="pd-stat-num" data-count="5" data-suffix="×">0</div><div class="pd-stat-lbl">Review throughput</div></div>
+              <div class="pd-stat"><div class="pd-stat-num" data-count="31" data-suffix="%">0</div><div class="pd-stat-lbl">Shorter cycle time</div></div>
+              <div class="pd-stat"><div class="pd-stat-num" data-count="2.4" data-prefix="$" data-suffix="M" data-decimals="1">0</div><div class="pd-stat-lbl">Run-rate savings</div></div>
+            </div>
+            <div class="pd-assure" data-pd-anim>
+              <span class="pd-assure-item"><i>🔐</i>Entra ID SSO · role-based access</span>
+              <span class="pd-assure-item"><i>🛡️</i>Azure OpenAI on your subscription</span>
+              <span class="pd-assure-item"><i>🧾</i>Immutable audit trail</span>
+            </div>
+          </section>
+
+          <!-- 7 · CTA -->
+          <section class="pd-slide pd-center" data-slide="6">
+            <span class="pd-eyebrow c-green" data-pd-anim>You've seen the pitch</span>
+            <h2 class="pd-h2" data-pd-anim>Now watch LEXORA <em>actually do it</em></h2>
+            <div class="pd-cta" data-pd-anim>
+              <button class="pd-cta-card" data-goto-view="cases" data-pd-anim>
+                <span class="pd-cta-ico">⚖️</span>
+                <span class="pd-cta-t">New Case Intake</span>
+                <span class="pd-cta-s">Drop a complaint &amp; watch AI fill the fields</span>
+              </button>
+              <button class="pd-cta-card" data-goto-view="chat" data-pd-anim>
+                <span class="pd-cta-ico">🤖</span>
+                <span class="pd-cta-t">Ask the Agent</span>
+                <span class="pd-cta-s">Question your matters, get cited answers</span>
+              </button>
+              <button class="pd-cta-card" data-goto-view="dashboard" data-pd-anim>
+                <span class="pd-cta-ico">📊</span>
+                <span class="pd-cta-t">Executive Dashboard</span>
+                <span class="pd-cta-s">See portfolio health at a glance</span>
+              </button>
+            </div>
+            <p class="pd-hint" data-pd-anim>The ask — <strong>an executive sponsor, pilot data access, and a 90-day runway.</strong></p>
+          </section>
+
+        </div>
+
+        <!-- Dots rail -->
+        <nav class="pd-dots" id="pdDots" aria-label="Slides"></nav>
+
+        <!-- Controls -->
+        <div class="pd-controls">
+          <button class="pd-btn" id="pdPrev" aria-label="Previous slide">‹</button>
+          <span class="pd-counter" id="pdCounter">01 / 07</span>
+          <button class="pd-btn" id="pdNext" aria-label="Next slide">›</button>
+        </div>
+        <div class="pd-progress"><i id="pdProgress"></i></div>
+
+        <!-- Detail modal (capabilities & challenges) -->
+        <div class="pd-modal" id="pdModal" aria-hidden="true">
+          <div class="pd-modal-backdrop" data-pd-close></div>
+          <div class="pd-modal-dialog" role="dialog" aria-modal="true">
+            <button class="pd-modal-x" data-pd-close aria-label="Close">✕</button>
+            <div class="pd-modal-head">
+              <span class="pd-modal-ico" id="pdModalIco">✦</span>
+              <div>
+                <span class="pd-modal-kicker" id="pdModalKicker"></span>
+                <h3 class="pd-modal-title" id="pdModalTitle"></h3>
+              </div>
+            </div>
+            <div class="pd-modal-body" id="pdModalBody"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer pinned">
+    <span class="footer-text">CREATED BY&nbsp;&nbsp;|&nbsp;&nbsp;CHINMOY&nbsp;C.</span>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Reschedule modal -->
+  <div id="rescheduleModal" class="modal hidden">
+    <div class="glass modal-card">
+      <h3>Reschedule appointment <span id="rsApptId"></span></h3>
+      <label>New date</label>
+      <div class="dtp" id="rsDateWrap">
+        <button type="button" class="dtp-trigger" id="rsDateBtn">
+          <span id="rsDateLabel" class="dtp-label">Pick a date</span>
+          <span class="dtp-caret">▾</span>
+        </button>
+        <div class="dtp-pop hidden" id="rsDatePop">
+          <div class="dtp-head">
+            <button type="button" class="dtp-nav" id="rsPrev">‹</button>
+            <span class="dtp-title" id="rsMonthLabel"></span>
+            <button type="button" class="dtp-nav" id="rsNext">›</button>
+          </div>
+          <div class="dtp-dow">
+            <span>S</span><span>M</span><span>T</span><span>W</span>
+            <span>T</span><span>F</span><span>S</span>
+          </div>
+          <div class="dtp-grid" id="rsGrid"></div>
+        </div>
+      </div>
+      <label>New time</label>
+      <div class="time-row">
+        <select id="rsHour" class="time-sel"></select>
+        <span class="time-sep">:</span>
+        <select id="rsMinute" class="time-sel"></select>
+        <select id="rsAmPm" class="time-sel">
+          <option>AM</option><option>PM</option>
+        </select>
+      </div>
+      <input type="hidden" id="rsWhen" />
+      <label>Reason</label>
+      <input type="text" id="rsReason" placeholder="e.g. judge unavailable" />
+      <div class="modal-actions">
+        <button class="btn-ghost" id="rsCancel">Cancel</button>
+        <button class="btn-primary" id="rsConfirm">Reschedule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Case intake modal -->
+  <div id="newCaseModal" class="modal hidden">
+    <div class="glass modal-card intake-card">
+      <div class="intake-head">
+        <div>
+          <h3>New Case Intake</h3>
+          <span class="muted intake-caseno">Case # auto-assigned on save</span>
+        </div>
+        <button class="btn-ghost intake-x" id="ncClose">✕</button>
+      </div>
+
+      <!-- Intake mode selector -->
+      <div class="intake-modes">
+        <button type="button" class="intake-mode active" data-mode="manual">✎ Manual entry</button>
+        <button type="button" class="intake-mode" data-mode="upload">⬆ Upload file</button>
+        <button type="button" class="intake-mode" data-mode="paste">❝ Paste text</button>
+        <button type="button" class="intake-mode" data-mode="api">⇄ Import API</button>
+      </div>
+
+      <!-- AI source panels (hidden in manual mode) -->
+      <div class="intake-source" id="ncSourceUpload" hidden>
+        <div class="intake-drop" id="ncDrop">
+          <input type="file" id="ncFile" accept=".pdf,.docx,.pptx,.xlsx,.json,.txt,.md" hidden />
+          <div class="intake-drop-inner">
+            <span class="intake-drop-icon">⬆</span>
+            <div>Drop a complaint, intake form, or spreadsheet here
+              <button type="button" class="link-btn" id="ncBrowse">browse</button></div>
+            <div class="muted small">PDF · DOCX · PPTX · XLSX · JSON · TXT</div>
+          </div>
+        </div>
+        <div class="intake-file muted small" id="ncFileName"></div>
+        <button type="button" class="btn-primary intake-extract" id="ncExtractFile">✦ Extract fields with AI</button>
+      </div>
+
+      <div class="intake-source" id="ncSourcePaste" hidden>
+        <textarea id="ncPasteText" class="intake-textarea"
+          placeholder="Paste an intake email, complaint summary, or matter description…"></textarea>
+        <button type="button" class="btn-primary intake-extract" id="ncExtractText">✦ Extract fields with AI</button>
+      </div>
+
+      <div class="intake-source" id="ncSourceApi" hidden>
+        <label>Source API URL (returns JSON or text)</label>
+        <input type="url" id="ncApiUrl" placeholder="https://intake.example.com/matters/123" />
+        <button type="button" class="btn-primary intake-extract" id="ncExtractApi">✦ Fetch &amp; extract</button>
+      </div>
+
+      <div class="intake-status hidden" id="ncStatus"></div>
+
+      <!-- The case form (shared by every mode) -->
+      <form id="ncForm" class="intake-form">
+        <div class="intake-grid">
+          <div class="fld span2">
+            <label>Case title <span class="req">*</span></label>
+            <input type="text" id="ncTitle" required
+              placeholder="e.g. Acme Corp v. Globex — Breach of Contract" />
+          </div>
+          <div class="fld">
+            <label>Client</label>
+            <input type="text" id="ncClient" placeholder="Client / matter owner" />
+          </div>
+          <div class="fld">
+            <label>Practice area</label>
+            <select id="ncPractice"></select>
+          </div>
+          <div class="fld">
+            <label>Case type</label>
+            <select id="ncType"></select>
+          </div>
+          <div class="fld">
+            <label>Jurisdiction</label>
+            <select id="ncJuris"></select>
+          </div>
+          <div class="fld">
+            <label>Status</label>
+            <select id="ncStatusSel"></select>
+          </div>
+          <div class="fld">
+            <label>Priority</label>
+            <select id="ncPriority"></select>
+          </div>
+          <div class="fld">
+            <label>Court</label>
+            <input type="text" id="ncCourt" placeholder="Courthouse / venue" />
+          </div>
+          <div class="fld">
+            <label>Judge</label>
+            <input type="text" id="ncJudge" placeholder="Presiding judge" />
+          </div>
+          <div class="fld">
+            <label>Opposing counsel</label>
+            <input type="text" id="ncOpposing" placeholder="Opposing firm" />
+          </div>
+          <div class="fld">
+            <label>Filed date</label>
+            <input type="date" id="ncFiled" />
+          </div>
+          <div class="fld">
+            <label>Estimated value (USD)</label>
+            <input type="number" id="ncValue" min="0" step="1000" placeholder="0" />
+          </div>
+          <div class="fld span2">
+            <label>Summary</label>
+            <textarea id="ncSummary" rows="3"
+              placeholder="Brief synopsis of the matter…"></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="ncCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="ncSave">Save case</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pattern details modal -->
+  <div id="patternModal" class="modal hidden">
+    <div class="glass modal-card pat-modal">
+      <div class="pat-modal-head">
+        <span id="pmSource" class="pat-chip src"></span>
+        <h3 id="pmTitle"></h3>
+      </div>
+      <div id="pmChips" class="pat-chips"></div>
+      <div id="pmDetailWrap" class="pat-modal-section">
+        <div class="pat-modal-label">What we found</div>
+        <p id="pmDetail" class="pat-modal-text"></p>
+      </div>
+      <div id="pmActionWrap" class="pat-modal-section">
+        <div class="pat-modal-label">Recommended action</div>
+        <p id="pmAction" class="pat-modal-text"></p>
+      </div>
+      <div id="pmEvidenceWrap" class="pat-modal-section">
+        <div class="pat-modal-label">Evidence trail</div>
+        <ul id="pmEvidence" class="pat-evidence"></ul>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="pmClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Litigation Outcome Predictor modal -->
+  <div id="predictorModal" class="modal hidden">
+    <div class="glass modal-card predictor-card">
+      <div class="intake-head">
+        <div>
+          <h3>⚖ Litigation Outcome &amp; Settlement Predictor</h3>
+          <span class="muted intake-caseno">Transparent model · LLM strategy narration · evidence trail</span>
+        </div>
+        <button class="btn-ghost intake-x" id="prClose">✕</button>
+      </div>
+
+      <div class="pr-picker">
+        <div class="fld" style="flex:1">
+          <label>Select a matter</label>
+          <select id="prCaseSel"><option value="">Loading cases…</option></select>
+        </div>
+        <button class="btn-primary" id="prRun">✦ Run prediction</button>
+      </div>
+
+      <div class="pr-status hidden" id="prStatus"></div>
+
+      <div class="pr-results hidden" id="prResults">
+        <div class="pr-metrics">
+          <div class="pr-metric">
+            <div class="pr-gauge" id="prGauge">
+              <span class="pr-gauge-val" id="prSettlePct">—</span>
+            </div>
+            <div class="pr-metric-label">Settlement likelihood</div>
+          </div>
+          <div class="pr-metric-cards">
+            <div class="pr-mc">
+              <div class="pr-mc-label">Expected duration</div>
+              <div class="pr-mc-val" id="prDuration">—</div>
+              <div class="pr-mc-sub" id="prDurationRange"></div>
+            </div>
+            <div class="pr-mc">
+              <div class="pr-mc-label">Settlement value</div>
+              <div class="pr-mc-val" id="prSettleExp">—</div>
+              <div class="pr-mc-sub" id="prSettleRange"></div>
+            </div>
+            <div class="pr-mc">
+              <div class="pr-mc-label">Favorable outcome</div>
+              <div class="pr-mc-val" id="prFavorable">—</div>
+              <div class="pr-mc-sub" id="prTrial"></div>
+            </div>
+            <div class="pr-mc">
+              <div class="pr-mc-label">Risk band</div>
+              <div class="pr-mc-val" id="prRisk">—</div>
+              <div class="pr-mc-sub" id="prConf"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pr-section">
+          <div class="pat-modal-label">AI strategic assessment</div>
+          <p class="pat-modal-text" id="prNarrative"></p>
+        </div>
+
+        <div class="pr-section">
+          <div class="pat-modal-label">Driving factors</div>
+          <div id="prFactors" class="pr-factors"></div>
+        </div>
+
+        <details class="pr-why">
+          <summary>Why? <span class="pat-why-count" id="prEvCount"></span></summary>
+          <ul id="prEvidence" class="pat-evidence"></ul>
+        </details>
+
+        <p class="pr-disclaimer muted">
+          Predictive estimates for planning only — not legal advice. Model is
+          transparent and statistically grounded; review with counsel.
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="prCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/predictor.js"></script>
+  <script src="/static/js/cases.js"></script>
+  <script src="/static/js/documents.js"></script>
+  <script src="/static/js/chat.js"></script>
+  <script src="/static/js/analytics.js"></script>
+  <script src="/static/js/calendar.js"></script>
+  <script src="/static/js/notifications.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="/static/js/pitch.js"></script>
+</body>
+</html>

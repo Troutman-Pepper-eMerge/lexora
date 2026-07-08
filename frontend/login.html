@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEXORA — Sign in</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body class="auth-body">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+
+  <main class="auth-shell">
+    <div class="glass auth-card">
+      <div class="brand-row">
+        <div class="logo-mark">L</div>
+        <div>
+          <h1 class="brand-name">LEXORA</h1>
+          <p class="brand-tag">Litigation Lifecycle, illuminated.</p>
+        </div>
+      </div>
+
+      <h2 class="auth-title">Sign in with your firm role</h2>
+      <p class="auth-sub">
+        Key-based auth is disabled on this tenant.
+        Demo mode uses Entra ID-style role claims locally; production uses real
+        Azure AD bearer tokens.
+      </p>
+
+      <div id="profiles" class="profile-grid">
+        <div class="skeleton-row"></div>
+      </div>
+
+      <button id="themeToggle" class="theme-toggle" title="Toggle theme">
+        <span class="sun">☀</span><span class="moon">☾</span>
+      </button>
+    </div>
+  </main>
+
+  <footer class="footer pinned">
+    <span class="footer-text">CREATED BY&nbsp;&nbsp;|&nbsp;&nbsp;CHINMOY&nbsp;C.</span>
+  </footer>
+
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/login.js"></script>
+</body>
+</html>
