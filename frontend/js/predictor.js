@@ -75,11 +75,10 @@
     // Gauge
     const sp = p.settlement_likelihood ?? 0;
     $("prSettlePct").textContent = pct(sp);
-    const deg = Math.round(sp * 360);
     const gauge = $("prGauge");
     const col = sp >= 0.6 ? "var(--good)" : sp >= 0.4 ? "var(--warn)" : "var(--danger)";
-    gauge.style.background =
-      `conic-gradient(${col} ${deg}deg, rgba(255,255,255,.08) ${deg}deg)`;
+    gauge.style.background = "var(--glass-bg-strong)";
+    gauge.style.border = `10px solid ${col}`;
 
     $("prDuration").textContent = days(p.expected_duration_days);
     $("prDurationRange").textContent =

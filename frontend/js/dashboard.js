@@ -65,13 +65,10 @@
     const ctx = document.getElementById("chartFilings");
     const labels = Object.keys(data); const values = Object.values(data);
     const c = LEXORA.chartColors();
-    const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, "rgba(41,211,196,.55)");
-    grad.addColorStop(1, "rgba(41,211,196,0)");
     charts.filings = new Chart(ctx, {
       type: "line",
       data: { labels, datasets: [{ label: "Filings", data: values,
-        borderColor: c.a2, backgroundColor: grad, fill: true,
+        borderColor: c.a2, backgroundColor: "rgba(41,211,196,.20)", fill: true,
         tension: .35, pointRadius: 3, pointHoverRadius: 6,
         pointBackgroundColor: c.a2 }] },
       options: baseOpts(),
