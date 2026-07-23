@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # Database
-    database_url: str = ""
+    database_url: str = "sqlite:///./data/lexora.db"
 
     # Storage (reserved for future use)
     data_dir: str = "./data"
