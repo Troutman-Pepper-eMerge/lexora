@@ -10,10 +10,24 @@ import argparse
 import logging
 import multiprocessing as mp
 import sys
+import warnings
 
 import uvicorn
 
+try:
+    from langchain_core._api.deprecation import LangChainPendingDeprecationWarning
+except Exception:  # pragma: no cover
+    LangChainPendingDeprecationWarning = Warning
+
 from app.config import get_settings
+
+# Suppress a known third-party pending deprecation warning from langgraph/checkpoint
+# while staying on the current LangChain/LangGraph compatibility band.
+warnings.filterwarnings(
+    "ignore",
+    message=r"The default value of `allowed_objects` will change in a future version.*",
+    category=LangChainPendingDeprecationWarning,
+)
 
 
 def _run_api(host: str, port: int, log_level: str) -> None:
