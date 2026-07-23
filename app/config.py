@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,10 +31,12 @@ class Settings(BaseSettings):
     app_secret: str = "lexora-dev-secret"
     log_level: str = "INFO"
 
-    # Storage
+    # Database
+    database_url: str = ""
+
+    # Storage (reserved for future use)
     data_dir: str = "./data"
     docs_dir: str = "./docs"
-    sqlite_path: str = "./data/lexora.db"
     vector_index_path: str = "./data/vector_index"
 
     # MCP
@@ -47,9 +47,7 @@ class Settings(BaseSettings):
     demo_mode: bool = True
 
     def ensure_dirs(self) -> None:
-        for p in (self.data_dir, self.docs_dir, self.vector_index_path,
-                  Path(self.docs_dir) / "uploads"):
-            Path(p).mkdir(parents=True, exist_ok=True)
+        pass
 
 
 @lru_cache

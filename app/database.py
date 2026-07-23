@@ -10,11 +10,10 @@ from .config import get_settings
 from .models import Base
 
 _settings = get_settings()
-Path(_settings.sqlite_path).parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_engine(
-    f"sqlite:///{_settings.sqlite_path}",
-    connect_args={"check_same_thread": False},
+    _settings.database_url,
+    pool_pre_ping=True,
     echo=False,
 )
 

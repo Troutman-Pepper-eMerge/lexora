@@ -11,3 +11,4 @@ data/
 docs/uploads/
 frontend/node_modules/
 .vscode/
+.env

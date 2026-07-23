@@ -19,7 +19,6 @@ from .routers import cases as cases_router
 from .routers import chat as chat_router
 from .routers import documents as documents_router
 from .routers import notifications as notifications_router
-from .seed import seed
 
 settings = get_settings()
 logging.basicConfig(
@@ -41,12 +40,6 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup():
     init_db()
-    seed()
-    # Backfill history-timeline milestones for any pre-existing cases.
-    from .database import session_scope
-    from .timeline import backfill_all
-    with session_scope() as db:
-        backfill_all(db)
 
 
 # --- API routers ----
