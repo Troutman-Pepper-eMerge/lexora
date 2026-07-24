@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Entra ID
     azure_tenant_id: str = ""
     azure_client_id: str = ""
+    azure_client_secret: str = ""
+    azure_redirect_uri: str = "http://localhost:8000/api/auth/callback"
 
     # App
     app_env: str = "development"
@@ -44,7 +46,7 @@ class Settings(BaseSettings):
     mcp_host: str = "127.0.0.1"
     mcp_port: int = 8765
 
-    demo_mode: bool = True
+    demo_mode: bool = False
 
     def ensure_dirs(self) -> None:
         pass
