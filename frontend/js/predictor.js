@@ -28,7 +28,7 @@
       const cases = (data.cases || []).slice().sort((a, b) =>
         (a.case_number || "").localeCompare(b.case_number || ""));
       if (!cases.length) {
-        sel.innerHTML = `<option value="">No cases available</option>`;
+        sel.innerHTML = `<option value="">No matters available</option>`;
         return;
       }
       sel.innerHTML =
@@ -38,7 +38,7 @@
         ).join("");
       loadedCases = true;
     } catch (e) {
-      sel.innerHTML = `<option value="">Failed to load cases</option>`;
+      sel.innerHTML = `<option value="">Failed to load matters</option>`;
     }
   }
 
@@ -75,10 +75,20 @@
     // Gauge
     const sp = p.settlement_likelihood ?? 0;
     $("prSettlePct").textContent = pct(sp);
-    const gauge = $("prGauge");
+    const gaugeProgress = $("prGaugeProgress");
     const col = sp >= 0.6 ? "var(--good)" : sp >= 0.4 ? "var(--warn)" : "var(--danger)";
-    gauge.style.background = "var(--glass-bg-strong)";
-    gauge.style.border = `10px solid ${col}`;
+    const value = Math.max(0, Math.min(1, sp));
+    const CIRC = 2 * Math.PI * 44;
+    if (gaugeProgress) {
+      gaugeProgress.style.transition = "none";
+      gaugeProgress.style.stroke = col;
+      gaugeProgress.style.strokeDasharray = `${CIRC}`;
+      gaugeProgress.style.strokeDashoffset = `${CIRC}`;
+      gaugeProgress.getBoundingClientRect();
+      gaugeProgress.style.transition =
+        "stroke-dashoffset .65s cubic-bezier(.2,.8,.2,1), stroke .22s ease";
+      gaugeProgress.style.strokeDashoffset = `${CIRC * (1 - value)}`;
+    }
 
     $("prDuration").textContent = days(p.expected_duration_days);
     $("prDurationRange").textContent =
