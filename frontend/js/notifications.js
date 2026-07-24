@@ -62,7 +62,7 @@
           <span class="nt-to">${esc(n.recipient)}</span>
           <span class="nt-dot">·</span>
           <span class="nt-chan">${n.channel}</span>
-          ${n.case_id ? `<span class="nt-dot">·</span><span class="nt-case">Case #${n.case_id}</span>` : ""}
+          ${n.case_id ? `<span class="nt-dot">·</span><span class="nt-case">Matter #${n.case_id}</span>` : ""}
           <span class="nt-dot">·</span>
           <span class="nt-time">${relTime(n.sent_at || n.created_at)}</span>
         </div>

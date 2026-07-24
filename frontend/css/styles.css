@@ -262,6 +262,11 @@ select optgroup {
   gap: 8px;
   padding-right: 0;
 }
+/* Cases view: detail mode */
+.view[data-view="cases"].active.detail-open {
+  overflow: hidden;
+  padding-right: 0;
+}
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 .view-header {
@@ -299,6 +304,20 @@ select optgroup {
   overflow-y: auto;
   padding-right: 6px;
 }
+.view[data-view="cases"].detail-open > .card.fill {
+  display: none;
+}
+.view[data-view="cases"].detail-open #caseDetail:not(.hidden) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.view[data-view="cases"].detail-open #cdBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
 
 /* Fill panels: grow to remaining height and scroll internally */
 .card.fill {
@@ -316,7 +335,6 @@ select optgroup {
   overflow-x: auto;
   padding-right: 4px;
 }
-
 /* Compact chart wrappers */
 .chart-box { position: relative; height: 150px; width: 100%; }
 .chart-box.tall { height: 200px; }
@@ -964,12 +982,32 @@ select optgroup {
 .pr-gauge {
   width: 124px; height: 124px; border-radius: 50%;
   margin: 0 auto; display: grid; place-items: center;
-  background: conic-gradient(var(--accent) 0deg, rgba(255,255,255,.08) 0deg);
   position: relative;
+  background: var(--glass-bg-strong);
 }
 .pr-gauge::after {
   content: ""; position: absolute; inset: 12px;
   border-radius: 50%; background: var(--bg-2);
+}
+.pr-gauge-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.pr-gauge-track,
+.pr-gauge-progress {
+  fill: none;
+  stroke-width: 8;
+}
+.pr-gauge-track { stroke: var(--line); }
+.pr-gauge-progress {
+  stroke: var(--good);
+  stroke-linecap: round;
+  stroke-dasharray: 276.46;
+  stroke-dashoffset: 276.46;
+  transition: stroke-dashoffset .65s cubic-bezier(.2,.8,.2,1), stroke .22s ease;
 }
 .pr-gauge-val {
   position: relative; z-index: 1;

@@ -6,7 +6,7 @@
   const renderKpis = (k) => {
     const g = document.getElementById("kpiGrid");
     const items = [
-      { label: "Total Cases",       value: LEXORA.fmtNum(k.total_cases), sub: `${k.open_cases} open · ${k.closed_cases} closed` },
+      { label: "Total Matters",     value: LEXORA.fmtNum(k.total_cases), sub: `${k.open_cases} open · ${k.closed_cases} closed` },
       { label: "Critical Matters",  value: LEXORA.fmtNum(k.critical_cases), sub: "Require partner attention", cls: "danger" },
       { label: "Portfolio Value",   value: LEXORA.fmtMoney(k.total_value_usd), sub: "Estimated exposure / claim value" },
       { label: "Billable Hours",    value: LEXORA.fmtNum(Math.round(k.billable_hours)), sub: "Recorded against open matters" },
@@ -54,7 +54,7 @@
     const c = LEXORA.chartColors();
     charts.practice = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ label: "Cases", data: values,
+      data: { labels, datasets: [{ label: "Matters", data: values,
         backgroundColor: c.a1, borderRadius: 8 }] },
       options: baseOpts(),
     });

@@ -171,10 +171,10 @@
     intake: {
       ico: "🧾", kicker: "Capability", title: "Intelligent intake",
       html:
-        "<p>Open a new case from a raw complaint, intake email, spreadsheet, or an intake API — no manual keying.</p>" +
+        "<p>Open a new matter from a raw complaint, intake email, spreadsheet, or an intake API — no manual keying.</p>" +
         '<div class="pd-mb-label">What it does</div>' +
         "<ul>" +
-        "<li>Parses <strong>PDF · DOCX · PPTX · XLSX · JSON · TXT</strong> and extracts every case field.</li>" +
+        "<li>Parses <strong>PDF · DOCX · PPTX · XLSX · JSON · TXT</strong> and extracts every matter field.</li>" +
         "<li>Auto-fills title, client, practice area, jurisdiction, court, judge, opposing counsel &amp; value.</li>" +
         "<li>Snaps free text to your controlled vocabularies, then lets you review before saving.</li>" +
         "</ul>" +
@@ -199,7 +199,7 @@
         '<div class="pd-mb-label">What it does</div>' +
         "<ul>" +
         "<li>Orchestrates multi-step legal workflows with a LangGraph agent.</li>" +
-        "<li>Calls portfolio analytics, document search &amp; case tools on demand.</li>" +
+        "<li>Calls portfolio analytics, document search &amp; matter tools on demand.</li>" +
         "<li>Streams its reasoning and cites every source it used.</li>" +
         "</ul>" +
         '<span class="pd-mb-badge">✓ Working in this product</span>'
@@ -222,7 +222,7 @@
     scattered: {
       ico: "🗂️", kicker: "Fits how you work", title: "Scattered tools",
       now: "Matter data lives across email, spreadsheets, a DMS, and a dozen point tools — nothing is in one place.",
-      wit: "LEXORA unifies intake, cases, documents, analytics, and calendaring in one governed workspace, so every stage of the lifecycle shares the same source of truth.",
+      wit: "LEXORA unifies intake, matters, documents, analytics, and calendaring in one governed workspace, so every stage of the lifecycle shares the same source of truth.",
       live: true
     },
     triage: {
