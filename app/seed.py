@@ -10,7 +10,7 @@ import random
 from datetime import datetime, timedelta
 
 from .database import session_scope
-from .models import (Appointment, Case, CaseNote, Document, Notification, User)
+from .models import (Appointment, Case, CaseEvent, CaseNote, Document, Notification, User)
 
 random.seed(42)
 
@@ -62,7 +62,7 @@ def seed(force: bool = False) -> None:
 
     if force:
         with session_scope() as db:
-            for model in (Notification, Appointment, CaseNote, Document, Case, User):
+            for model in (Notification, Appointment, CaseNote, Document, CaseEvent, Case, User):
                 db.query(model).delete(synchronize_session=False)
         print("Existing data cleared.")
 
