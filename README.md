@@ -1,343 +1,272 @@
 # LEXORA
 
 > **Litigation Lifecycle, illuminated.**
-> An Azure-native, agentic case-management platform for a top-tier law firm —
-> built for the Troutman / Mays & Valentine CIO demo.
+> An Azure-native, agentic case-management platform built for law firm demos.
 
-`LEX` *(law)* + `AURORA` *(illumination)* = **LEXORA** — one word, one promise:
-shine intelligent, agentic light across every stage of the litigation lifecycle.
+`LEX` *(law)* + `AURORA` *(illumination)* = **LEXORA**
 
 ---
 
-## ✨ What it does
+## What it does
 
 | Capability | How |
 |---|---|
-| **Ingestion** of PDF / DOCX / PPTX / JSON / TXT / MD | Streaming upload → token-aware chunking → Azure OpenAI embeddings → FAISS (or Azure AI Search) |
-| **RAG Q&A** over the firm's documents | LangGraph ReAct agent + Azure OpenAI chat model + semantic retrieval with citations |
-| **Real-time tool use** (no hard-coded answers) | FastMCP server exposes the same tools used by the agent — every call hits SQLite / FAISS / Azure live |
-| **Action-taking** — reschedule appointments, send notifications, generate reports | Each is a real DB mutation, an audit-log entry, and (in prod) an outbound dispatch |
-| **Notification Center** | Live activity feed of every queued/sent notification with KPIs, channel/status filters, and relative timestamps |
-| **Executive dashboard** + analytics | KPIs, doughnut/bar/line charts, monthly-filings trend, value-by-practice |
-| **Pattern detection** | Surfaces the headline insight: *California cases run materially longer than the national average* |
-| **Tenant RBAC** (key-auth disabled) | Entra ID bearer tokens *or* signed-cookie demo profiles; route handlers enforce role hierarchy |
-| **Service health probe** | `GET /api/health/services` reports DB / Azure OpenAI / Search / vector-store / MCP status |
-| **UI** | Glass-morphism, dark default + light toggle, modern header, pinned centered footer |
+| **Document ingestion** — PDF / DOCX / PPTX / JSON / TXT / MD | Upload → token-aware chunking → Azure OpenAI embeddings → Azure AI Search |
+| **RAG Q&A** over firm documents | LangGraph ReAct agent + Azure OpenAI + semantic retrieval with citations |
+| **Action-taking agent** — reschedule, notify, report | Every call is a real DB mutation with an audit-log entry |
+| **Executive dashboard + analytics** | KPIs, charts, monthly trends, practice-area breakdowns |
+| **Pattern detection** | Statistical + LLM-hybrid engine surfaces jurisdiction-level insights |
+| **Tenant RBAC** | Entra ID app roles (Admin / Partner / Associate / Paralegal / Client) |
+| **Service health probe** | `GET /api/health/services` — DB / Azure OpenAI / AI Search / vector store |
 
 ---
 
-## 🔄 Litigation lifecycle process flow
+## Architecture
 
-LEXORA mirrors how a matter actually moves through the firm — every stage maps
-to a feature in the app.
-
-```mermaid
-flowchart TD
-  I[Intake & Login<br/>RBAC profile] --> P[Portfolio review<br/>Executive Dashboard]
-  P --> C[Case management<br/>Cases tab: search · filter · hydrate]
-  C --> DOC[Evidence ingestion<br/>Documents tab: upload · classify · embed]
-  DOC --> Q[Investigation<br/>Agent tab: RAG Q&A + tools]
-  Q --> ACT{Agent decides<br/>action needed?}
-  ACT -- analytics --> AN[Analytics tab<br/>jurisdiction patterns]
-  ACT -- scheduling --> CAL[Calendar tab<br/>schedule / reschedule]
-  CAL --> NOT[Notification Center<br/>attendees auto-notified]
-  ACT -- reporting --> REP[generate_case_report]
-  AN --> P
-  NOT --> P
-  REP --> P
-
-  classDef stage fill:#1b1d3a,stroke:#7c5cff,color:#ecedfb;
-  classDef act fill:#2a1d3a,stroke:#ff6bcb,color:#ecedfb;
-  class I,P,C,DOC,Q,AN,CAL,NOT,REP stage;
-  class ACT act;
 ```
-
-**Closed loop:** every action (reschedule, notify, report) returns the user to
-the portfolio view, and every state change is persisted + audited — so the
-lifecycle is fully traceable end-to-end.
-
----
-
-## 🏗️ Architecture
+Browser (vanilla JS SPA)
+  → FastAPI (:8000)
+      → auth.py            — Entra ID OAuth2 + signed session cookie
+      → entra.py           — MSAL auth URL / code exchange / JWKS verification
+      → agent/graph.py     — LangGraph ReAct agent
+      → analytics.py       — KPIs, statistical + LLM pattern detection
+      → document_processor.py  — extract / classify / summarize
+      → vector_store.py    — Azure AI Search (or no-op if unconfigured)
+      → database.py        — SQLAlchemy (PostgreSQL prod / SQLite local)
+  → app/mcp/server.py      — FastMCP subprocess (:8765, disabled in ACA)
+```
 
 ```mermaid
 flowchart LR
   subgraph Browser
-    UI[Glass-morphism SPA<br/>Chart.js + vanilla JS]
+    UI[SPA — Chart.js + vanilla JS]
   end
 
-  subgraph FastAPI
+  subgraph FastAPI[:8000]
+    Auth[Entra ID OIDC]
     R[REST routers]
     A[LangGraph agent]
-    D[Document pipeline<br/>pypdf · python-docx · python-pptx]
-    V[Vector store<br/>FAISS or Azure AI Search]
-    Auth[RBAC middleware<br/>Entra ID JWT / signed cookie]
-    H[Health probe<br/>/api/health/services]
-  end
-
-  subgraph FastMCP
-    MCP[Real-time tool server<br/>:8765]
+    D[Document pipeline]
+    V[Vector store]
   end
 
   subgraph Azure
-    AOAI[Azure OpenAI<br/>chat + text-embedding-3-large]
-    SR[Azure AI Search<br/>optional]
+    AAD[Entra ID]
+    AOAI[Azure OpenAI\nchat + embeddings]
+    Search[Azure AI Search]
+    PG[(PostgreSQL)]
   end
 
-  subgraph Local
-    DB[(SQLite<br/>./data/lexora.db)]
-    FS[(./docs/uploads)]
-  end
-
-  UI -- credentials cookie --> Auth
-  Auth --> R
-  R --> A
-  A -- tool call --> R
-  R --> D
-  R --> V
-  R --> H
-  D --> FS
-  D --> V
+  UI --> Auth --> AAD
+  Auth --> R --> A --> AOAI
+  R --> D --> V --> Search
   V --> AOAI
-  A --> AOAI
-  V -. optional .-> SR
-  MCP --- A
-  MCP -. shares tools .-> R
-  R --> DB
+  R --> PG
 ```
 
-### Why a shared tool registry?
+### Non-obvious patterns
 
-`app/agent/tools.py` defines every tool **once**. The LangGraph agent wraps
-them as LangChain `StructuredTool`s, and `app/mcp/server.py` registers the
-same callables with FastMCP. Result: any MCP client (Claude Desktop, an IDE
-agent, another LangGraph instance) controls LEXORA with identical semantics
-— and there is zero drift between the two surfaces.
+**Single TOOL_REGISTRY** — `app/agent/tools.py` defines every tool once. The LangGraph agent wraps them as `StructuredTool` instances; `mcp/server.py` registers the same callables with FastMCP. Never add a tool to one without the other.
+
+**Lazy cached singletons** — `get_settings()`, all Azure clients, and the compiled LangGraph graph are `@lru_cache`. They initialize on first call. Mutating settings at runtime won't work.
+
+**Dual-mode database** — `database.py` detects the `DATABASE_URL` prefix: `sqlite` gets `check_same_thread=False`; anything else gets `pool_pre_ping=True` for PostgreSQL. Default is SQLite for local dev.
+
+**Demo mode** — `DEMO_MODE=true` enables a fake login page with preset role profiles. Production (`DEMO_MODE=false`, the default) requires a real Entra ID login and redirects automatically — no button click.
+
+**MCP disabled in ACA** — The FastMCP subprocess runs on `:8765` locally but is disabled in the container (`python run.py --no-mcp`). Port 8765 is not reachable via ACA ingress.
 
 ---
 
-## 🔁 Workflow
+## Authentication
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as Partner / Associate / Paralegal
-  participant UI
-  participant API as FastAPI
-  participant Agent as LangGraph Agent
-  participant MCP as FastMCP Tools
-  participant AOAI as Azure OpenAI
-  participant DB as SQLite + FAISS
+Authentication uses the **Entra ID OAuth2 authorization code flow** (`app/entra.py`, `app/routers/auth.py`).
 
-  U->>UI: "Which state takes longest to adjudicate?"
-  UI->>API: POST /api/chat
-  API->>Agent: run_agent(message, history)
-  Agent->>AOAI: chat.completions (with tools)
-  AOAI-->>Agent: tool_call: portfolio_analytics()
-  Agent->>MCP: portfolio_analytics()
-  MCP->>DB: aggregate per-jurisdiction days
-  DB-->>MCP: rows
-  MCP-->>Agent: structured analytics
-  Agent->>AOAI: synthesize with results
-  AOAI-->>Agent: "California averages 1.55x national..."
-  Agent-->>API: answer + trace
-  API-->>UI: stream answer + tool trace
-```
+**Flow:**
+1. User visits `/` → redirected to `/api/auth/login`
+2. `/api/auth/login` → redirects to `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize`
+3. After login, Entra ID redirects to `/api/auth/callback`
+4. Callback exchanges the code via MSAL, validates `tid` claim, extracts app roles, sets a signed `itsdangerous` session cookie
+5. User lands on `/` — all subsequent requests are authenticated via the cookie
 
-### Action-taking loop (reschedule → notify)
+**App roles** (defined in the Azure App Registration, assigned per user/group):
 
-This is the loop that lands for executives — the agent doesn't just *answer*,
-it *acts*, and the action is visible in the Notification Center.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as Partner
-  participant UI
-  participant API as FastAPI
-  participant Agent as LangGraph Agent
-  participant T as reschedule_appointment
-  participant DB as SQLite
-  participant NC as Notification Center
-
-  U->>UI: "Reschedule appt 3 to Tue 10am (judge conflict)"
-  UI->>API: POST /api/chat
-  API->>Agent: run_agent(...)
-  Agent->>T: reschedule_appointment(3, ...)
-  T->>DB: UPDATE appointment SET status=rescheduled
-  T->>DB: INSERT Notification per attendee
-  DB-->>T: ok
-  T-->>Agent: {previous, new, notified}
-  Agent-->>UI: "Moved & attendees notified"
-  U->>UI: open Notifications tab
-  UI->>API: GET /api/notifications
-  API->>DB: SELECT notifications
-  DB-->>API: rows
-  API-->>NC: feed + KPIs render
-```
-
-### Document ingestion (performance-tuned)
-
-1. **Streaming upload** to `./docs/uploads/<ts>_<name>` (no full-file buffering).
-2. DB row inserted **immediately** with `status=Processing…` → UI shows progress.
-3. Heavy parse/classify/summarize/embed dispatched to a **`BackgroundTask`** thread.
-4. Per-type extractors:
-   * PDF: `pypdf` per-page
-   * DOCX: heading-aware sectioning
-   * PPTX: slide-by-slide
-   * JSON / TXT / MD: passthrough
-5. **Token-aware chunking** via `tiktoken cl100k` — `MAX 600 tokens · 80 overlap`.
-6. Embeddings **batched** (64 chunks per Azure OpenAI call).
-7. Cosine via `IndexFlatIP` on L2-normalised vectors.
-8. Local FAISS index persists to `./data/vector_index/` — swap to Azure AI Search by setting `AZURE_SEARCH_ENDPOINT`.
-
----
-
-## 🎨 Design
-
-* **Flat visual system** — solid surfaces and clean borders (no glass blur effects).
-* **Light theme by default**; toggle button (top-right header & login) swaps between light and dark and persists in `localStorage`.
-* **Header**: solid logo mark, brand wordmark, central nav tabs.
-* **Footer**: pinned to the viewport bottom, centered text `CREATED BY | CHINMOY C.`
-* **Charts**: Chart.js — doughnut, bar, and polar-area portfolio visuals.
-* **Drag-and-drop dropzone** with hover state, queued-upload list, real-time progress.
-* **Accessibility-friendly contrast** in both themes; transitions tuned to 220 ms.
-
----
-
-## 🔐 Authentication & Authorization
-
-Key-based authentication is **disabled tenant-wide**, so every Azure call uses
-**`DefaultAzureCredential`** (Managed Identity in prod, `az login` locally,
-VS Code credential in dev). Required role assignments on the principal:
-
-| Resource | Role |
+| Entra ID role value | App role |
 |---|---|
-| Azure OpenAI | `Cognitive Services OpenAI User` |
-| Azure AI Search (optional) | `Search Index Data Contributor` |
-| (Optional) Storage / Key Vault | Standard data plane roles |
+| `App.Admin` | Admin — full access |
+| `App.Partner` | Partner — can delete documents |
+| `App.Associate` | Associate |
+| `App.Paralegal` | Paralegal |
+| `App.Client` | Client — read-only |
 
-User authentication has two interchangeable paths (see `app/auth.py`):
+Role hierarchy: `Admin ⊇ Partner ⊇ Associate ⊇ Paralegal`. `Client` is isolated (read-only).
 
-1. **Production**: client presents an Entra ID bearer token issued for `AZURE_CLIENT_ID`. The backend decodes claims, asserts the `tid` matches `AZURE_TENANT_ID`, and uses the `roles` claim for RBAC.
-2. **Demo** (`DEMO_MODE=true`): the login screen offers four role profiles. Selecting one issues a signed (`itsdangerous`) cookie that the same `current_principal` dependency consumes. This lets you showcase role-gated behaviour without provisioning Entra app roles.
-
-Role hierarchy enforced by `require_roles(...)`:
-
-```
-Admin   ⊇ Partner ⊇ Associate ⊇ Paralegal
-Client  (isolated; external view)
-```
-
-Every state-changing tool / endpoint writes to `audit_log` with actor email + role.
+**Azure portal setup required:**
+- App Registration → Authentication → **Web** platform (not SPA) with redirect URI `https://<host>/api/auth/callback`
+- Enable **ID tokens** under implicit grant
+- Define app roles matching the values above
+- Grant ACA managed identity `Cognitive Services OpenAI User` (Azure OpenAI) and `Search Index Data Contributor` (Azure AI Search)
 
 ---
 
-## 🧰 MCP tools (live, not mocked)
+## Local development
 
-| Tool | Purpose |
-|---|---|
-| `search_cases` | Free-text + filter search over the case portfolio |
-| `get_case_detail` | Full hydrate (docs, appts, notes) for one case |
-| `query_documents` | Semantic RAG retrieval with filename + page citations |
-| `list_upcoming_appointments` | Calendar lookahead |
-| `schedule_appointment` | Create on calendar |
-| `reschedule_appointment` | Move + auto-notify attendees |
-| `send_notification` | Queue email / SMS / in-app |
-| `generate_case_report` | Structured report dict |
-| `portfolio_analytics` | KPIs + distributions + detected patterns |
-
-> Notifications created by `send_notification` and `reschedule_appointment` are
-> surfaced live in the **Notification Center** tab (`GET /api/notifications`).
-
-Connect any MCP client to `http://127.0.0.1:8765` (HTTP transport) or
-`python -m app.mcp.server --stdio` (stdio transport).
-
----
-
-## 🚀 Run
-
-```powershell
-# 1. Create venv & install
+```bash
+# 1. Create venv and install
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 # 2. Configure
 copy .env.example .env
-# edit .env: AZURE_OPENAI_ENDPOINT, deployments, AZURE_TENANT_ID, AZURE_CLIENT_ID
+# Required: AZURE_OPENAI_ENDPOINT, AZURE_TENANT_ID, AZURE_CLIENT_ID,
+#           AZURE_CLIENT_SECRET, AZURE_REDIRECT_URI=http://localhost:8000/api/auth/callback
+# Optional: AZURE_SEARCH_ENDPOINT (omit to disable vector search locally)
+# Leave DATABASE_URL unset to use SQLite
 
-# 3. Sign in to Azure (RBAC; no keys needed)
+# 3. Sign in to Azure (RBAC — no API keys needed)
 az login
 
-# 4. Launch (API + FastMCP)
+# 4. Launch (API + FastMCP subprocess)
 python run.py
+
+# Seed demo data (only needed once, or use --force to reset)
+python -m app.seed
+python -m app.seed --force   # truncates and reseeds
 ```
 
-Open <http://localhost:8000/login>, pick a profile (e.g. **Harini Patel — Partner**),
-and you land on the Executive Dashboard.
-
-The SQLite DB seeds itself on first start with **30 cases across 8 US
-jurisdictions**, deliberately skewed so California shows a measurably longer
-average adjudication time.
+For local dev with `DEMO_MODE=true` in `.env`, a fake login page is available at `/login` with preset role profiles — no Entra ID calls needed.
 
 ---
 
-## 📁 Project layout
+## Deployment (Azure Container Apps)
+
+### Prerequisites
+
+| Resource | Notes |
+|---|---|
+| Azure Container Registry | Stores the Docker image |
+| Azure Container App | Ingress target port **8000**, min replicas **1** |
+| Azure PostgreSQL Flexible Server | Enable "Allow Azure services" firewall rule |
+| Azure AI Search | Create index `lexora-docs` — see schema below |
+| System-assigned Managed Identity on ACA | Needs RBAC roles on OpenAI and Search |
+
+### Required ACA environment variables
+
+| Variable | Value |
+|---|---|
+| `AZURE_OPENAI_ENDPOINT` | Your Azure OpenAI endpoint |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | e.g. `gpt-4o` |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | e.g. `text-embedding-3-large` |
+| `AZURE_TENANT_ID` | Your Entra ID tenant ID |
+| `AZURE_CLIENT_ID` | App Registration client ID |
+| `AZURE_CLIENT_SECRET` | App Registration client secret |
+| `AZURE_REDIRECT_URI` | `https://<aca-hostname>/api/auth/callback` |
+| `AZURE_SEARCH_ENDPOINT` | Azure AI Search endpoint URL |
+| `DATABASE_URL` | Full PostgreSQL connection string (value only, no `KEY=` prefix) |
+| `APP_SECRET` | Random secret for signing session cookies |
+
+### Makefile commands
+
+```bash
+make build    # docker buildx build --platform linux/amd64
+make push     # az acr login + docker push
+make update   # az containerapp update with new image
+make deploy   # build + push + update (full pipeline)
+```
+
+Tag is derived from the short git commit hash. Update `Makefile` variables at the top for your registry, ACA name, and resource group.
+
+### ACA probe configuration
+
+Liveness and readiness probes must be HTTP (not TCP) on port **8000**:
+
+```bash
+az containerapp update \
+  --name <aca-name> --resource-group <rg> \
+  --set-env-vars ... \
+  # Configure via portal: Health probes → HTTP GET /api/health port 8000
+  # initialDelaySeconds: 10, periodSeconds: 30
+```
+
+### Seed demo data in production
+
+Open the ACA console (portal → Container App → Console) and run:
+
+```bash
+python -m app.seed           # skips if data exists
+python -m app.seed --force   # truncates all case data and reseeds 30 demo cases
+```
+
+### Azure AI Search index schema
+
+Create an index named `lexora-docs` with these fields:
+
+| Field | Type | Key | Searchable | Filterable | Retrievable |
+|---|---|---|---|---|---|
+| `id` | Edm.String | ✓ | | | ✓ |
+| `doc_id` | Edm.String | | | ✓ | ✓ |
+| `case_id` | Edm.String | | | ✓ | ✓ |
+| `filename` | Edm.String | | ✓ | | ✓ |
+| `page` | Edm.Int32 | | | | ✓ |
+| `section` | Edm.String | | ✓ | | ✓ |
+| `text` | Edm.String | | ✓ | | ✓ |
+| `embedding` | Collection(Edm.Single) | | vector | | ✓ |
+
+Vector field: **dimensions = 3072** (matches `text-embedding-3-large`), algorithm = **HNSW**.
+
+---
+
+## MCP tools
+
+| Tool | Purpose |
+|---|---|
+| `search_cases` | Free-text + filter search over the case portfolio |
+| `get_case_detail` | Full hydrate (docs, appointments, notes) for one case |
+| `query_documents` | Semantic RAG retrieval with filename + page citations |
+| `list_upcoming_appointments` | Calendar lookahead |
+| `schedule_appointment` | Create on calendar |
+| `reschedule_appointment` | Move + auto-notify attendees |
+| `send_notification` | Queue email / SMS / in-app notification |
+| `generate_case_report` | Structured report dict |
+| `portfolio_analytics` | KPIs + distributions + detected patterns |
+
+Connect locally: `http://127.0.0.1:8765` (HTTP transport) or `python -m app.mcp.server --stdio` (stdio).
+
+---
+
+## Project layout
 
 ```
-troutuc/
-├── .env / .env.example
+lexora/
+├── Makefile                        # build / push / deploy to ACA
+├── Dockerfile
+├── run.py                          # API + optional MCP launcher
 ├── requirements.txt
-├── run.py                          # API + MCP launcher
-├── README.md
-├── data/                           # SQLite + FAISS index (gitignored)
-├── docs/                           # uploaded files (gitignored)
+├── .env.example
 ├── app/
-│   ├── main.py                     # FastAPI app
-│   ├── config.py                   # pydantic-settings
-│   ├── auth.py                     # RBAC (Entra ID + demo cookie)
-│   ├── azure_clients.py            # DefaultAzureCredential helpers
-│   ├── database.py                 # SQLAlchemy engine
-│   ├── models.py                   # ORM
-│   ├── seed.py                     # mock data
-│   ├── document_processor.py       # PDF/DOCX/PPTX/JSON pipeline
-│   ├── vector_store.py             # FAISS + Azure AI Search bridge
-│   ├── analytics.py                # KPIs + pattern detection
+│   ├── main.py                     # FastAPI app, startup, static serving
+│   ├── config.py                   # pydantic-settings (env vars)
+│   ├── auth.py                     # RBAC: current_principal, require_roles, audit
+│   ├── entra.py                    # MSAL helpers, JWKS verification
+│   ├── azure_clients.py            # DefaultAzureCredential, OpenAI, Search clients
+│   ├── database.py                 # SQLAlchemy engine (SQLite/PostgreSQL auto-detect)
+│   ├── models.py                   # ORM models
+│   ├── seed.py                     # Demo data seeder (--force to reset)
+│   ├── document_processor.py       # Extract / chunk / classify / summarize
+│   ├── vector_store.py             # Azure AI Search bridge + embedding helpers
+│   ├── analytics.py                # KPIs, statistical + LLM pattern detection
+│   ├── timeline.py                 # Case event timeline builder
 │   ├── agent/
-│   │   ├── tools.py                # shared tool registry
-│   │   └── graph.py                # LangGraph workflow
-│   ├── mcp/server.py               # FastMCP server
-│   └── routers/                    # FastAPI routers
+│   │   ├── tools.py                # Shared TOOL_REGISTRY
+│   │   └── graph.py                # LangGraph ReAct workflow
+│   ├── mcp/server.py               # FastMCP server (local only)
+│   └── routers/                    # auth, cases, documents, chat, analytics,
+│                                   # appointments, notifications
 └── frontend/
-    ├── index.html / login.html
-    ├── css/styles.css              # flat UI + theme tokens
-    └── js/                         # theme, app, dashboard, cases, documents,
-                                     # chat, analytics, calendar, notifications
+    ├── index.html
+    ├── login.html                  # Only used in DEMO_MODE=true
+    ├── css/styles.css
+    └── js/                         # app, dashboard, cases, documents,
+                                    # chat, analytics, calendar, notifications
 ```
-
----
-
-## 🧪 Demo script (5 min)
-
-1. **Login** as *Harini Patel — Partner*. Dashboard greets her with KPIs +
-   four charts + AI-detected patterns. Point out the *California pattern* card.
-2. **Switch theme** with the sun/moon toggle. The app restyles live between
-   light and dark themes.
-3. **Cases** tab → filter `California` + `Critical`. Click a row → full hydrate
-   panel with documents / appointments / notes.
-4. **Documents** tab → drag in a real PDF. Watch the queued row, then refresh
-   to see auto-classification, page count, and LLM summary appear.
-5. **Agent** tab → ask *"Which state takes the longest to adjudicate, and what
-   are the top contributing case types?"*. Observe the `🛠 portfolio_analytics`
-   tool badge under the answer.
-6. **Calendar** tab → reschedule an appointment via the custom date/time
-   picker; toast confirms attendees were notified (`Notification` rows persisted).
-7. **Notifications** tab → hit **Refresh**: the messages generated by the
-   reschedule appear at the top of the activity feed with recipient, channel,
-   case, and relative time — proving the agent took a real, auditable action.
-8. **Analytics** tab → horizontal-bar + doughnut visuals, Δ-vs-national pills.
-
----
-
-**CREATED BY | CHINMOY C.**
