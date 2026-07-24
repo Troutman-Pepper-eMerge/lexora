@@ -98,21 +98,33 @@ def _store() -> _LocalFaiss:
 
 
 def embed_texts(texts: List[str]) -> List[List[float]]:
-    return []
+    if not texts:
+        return []
+    return get_embeddings().embed_documents(texts)
 
 
 def embed_query(text: str) -> List[float]:
-    return []
+    return get_embeddings().embed_query(text)
 
 
 def add_chunks(*, doc_id: int, case_id: int, filename: str,
                chunks: List["Chunk"]) -> int:                # noqa: F821
-    return 0
+    if not chunks or not get_settings().azure_search_endpoint:
+        return 0
+    vectors = embed_texts([c.text for c in chunks])
+    metas = [
+        {"doc_id": doc_id, "case_id": case_id, "filename": filename,
+         "page": c.page, "section": c.section, "text": c.text}
+        for c in chunks
+    ]
+    return _add_to_azure_search(vectors, metas)
 
 
 def semantic_search(query: str, *, k: int = 6,
                     case_id: Optional[int] = None) -> List[dict]:
-    return []
+    if not get_settings().azure_search_endpoint:
+        return []
+    return _search_azure(query, k=k, case_id=case_id)
 
 
 # --------------------------------------------------------------------- #
@@ -157,4 +169,14 @@ def _search_azure(query: str, *, k: int, case_id: Optional[int]):
 
 
 def index_stats() -> dict:
-    return {"backend": "disabled", "vectors": 0}
+    s = get_settings()
+    if not s.azure_search_endpoint:
+        return {"backend": "disabled", "vectors": 0}
+    try:
+        client = get_search_client()
+        results = client.search(search_text="*", top=0, include_total_count=True)
+        count = results.get_count()
+        return {"backend": "azure_search", "index": s.azure_search_index_name, "vectors": count or 0}
+    except Exception as exc:
+        log.warning("index_stats error: %s", exc)
+        return {"backend": "azure_search", "index": s.azure_search_index_name, "vectors": -1}

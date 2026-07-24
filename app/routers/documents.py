@@ -5,14 +5,18 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import (APIRouter, Depends, File, Form,
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
                      HTTPException, UploadFile)
 from sqlalchemy.orm import Session
 
 from ..auth import Principal, audit, require_roles, current_principal
+from ..config import get_settings
 from ..database import get_db, session_scope
-from ..document_processor import EXTRACTORS
+from ..document_processor import (EXTRACTORS, classify_document,
+                                   extract_chunks, full_text,
+                                   summarize_with_llm)
 from ..models import Document
+from ..vector_store import add_chunks
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 log = logging.getLogger("lexora.docs.api")
@@ -37,6 +41,7 @@ def list_documents(case_id: Optional[int] = None, limit: int = 100,
 
 @router.post("/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     case_id: Optional[int] = Form(None),
     principal: Principal = Depends(require_roles("Partner","Associate","Paralegal","Admin")),
@@ -46,7 +51,6 @@ async def upload_document(
         raise HTTPException(400, f"Unsupported file type {suffix}. "
                             f"Allowed: {sorted(EXTRACTORS)}")
 
-    # Read size without persisting to disk
     content = await file.read()
     size = len(content)
 
@@ -58,49 +62,64 @@ async def upload_document(
         db.add(doc); db.flush()
         doc_id = doc.id
 
+    upload_dir = Path(get_settings().docs_dir) / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = upload_dir / f"{doc_id}{suffix}"
+    file_path.write_bytes(content)
+
+    with session_scope() as db:
+        d = db.get(Document, doc_id)
+        if d:
+            d.file_path = str(file_path)
+
+    background_tasks.add_task(
+        _process_uploaded_document, doc_id, file_path, file.filename or "upload", case_id
+    )
+
     audit(principal, "upload_document",
           target=f"doc:{doc_id}", detail={"filename": file.filename, "size": size})
     return {"document_id": doc_id, "filename": file.filename,
-            "size_bytes": size, "status": "queued"}
+            "size_bytes": size, "status": "processing"}
 
 
-# def _process_uploaded_document(doc_id: int, path: Path, filename: str,
-#                                 case_id: Optional[int]) -> None:
-#     """Background worker: extract -> classify -> summarize -> embed."""
-#     try:
-#         chunks = extract_chunks(path)
-#         text = full_text(chunks)
-#         category = classify_document(filename, text)
-#         try:
-#             summary = summarize_with_llm(text, filename)
-#         except Exception as exc:                                  # pragma: no cover
-#             log.warning("summary failed: %s", exc)
-#             summary = "(LLM summary unavailable - check Azure OpenAI access.)"
-#         n_vectors = 0
-#         if case_id is not None:
-#             try:
-#                 n_vectors = add_chunks(doc_id=doc_id, case_id=case_id,
-#                                         filename=filename, chunks=chunks)
-#             except Exception as exc:
-#                 log.warning("embedding failed: %s", exc)
-
-#         with session_scope() as db:
-#             d = db.get(Document, doc_id)
-#             if not d:
-#                 return
-#             d.page_count = max((c.page for c in chunks), default=0)
-#             d.extracted_text = text[:200_000]
-#             d.doc_category = category
-#             d.summary = summary
-#             d.indexed = n_vectors > 0
-#             d.doc_metadata = {"chunks": len(chunks), "vectors": n_vectors}
-#     except Exception as exc:                                      # pragma: no cover
-#         log.exception("processing failed for doc %s", doc_id)
-#         with session_scope() as db:
-#             d = db.get(Document, doc_id)
-#             if d:
-#                 d.doc_category = "Error"
-#                 d.summary = f"Processing error: {exc}"
+def _process_uploaded_document(doc_id: int, path: Path, filename: str,
+                                case_id: Optional[int]) -> None:
+    """Background worker: extract -> classify -> summarize -> embed."""
+    try:
+        chunks = extract_chunks(path)
+        text = full_text(chunks)
+        category = classify_document(filename, text)
+        try:
+            summary = summarize_with_llm(text, filename)
+        except Exception as exc:
+            log.warning("summary failed: %s", exc)
+            summary = "(LLM summary unavailable - check Azure OpenAI access.)"
+        n_vectors = 0
+        if case_id is not None:
+            try:
+                n_vectors = add_chunks(doc_id=doc_id, case_id=case_id,
+                                       filename=filename, chunks=chunks)
+            except Exception as exc:
+                log.warning("embedding failed: %s", exc)
+        with session_scope() as db:
+            d = db.get(Document, doc_id)
+            if not d:
+                return
+            d.page_count = max((c.page for c in chunks), default=0)
+            d.extracted_text = text[:200_000]
+            d.doc_category = category
+            d.summary = summary
+            d.indexed = n_vectors > 0
+            d.doc_metadata = {"chunks": len(chunks), "vectors": n_vectors}
+    except Exception as exc:
+        log.exception("processing failed for doc %s", doc_id)
+        with session_scope() as db:
+            d = db.get(Document, doc_id)
+            if d:
+                d.doc_category = "Error"
+                d.summary = f"Processing error: {exc}"
+    finally:
+        path.unlink(missing_ok=True)
 
 
 @router.post("/{doc_id}/analyze")
