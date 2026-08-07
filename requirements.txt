@@ -20,7 +20,7 @@ langchain-community>=0.3.13,<0.4
 langgraph>=0.2.60,<0.3
 
 # ---- MCP ----
-fastmcp==0.4.1
+fastmcp==3.2.0
 
 # ---- Document Processing ----
 pypdf==5.1.0
