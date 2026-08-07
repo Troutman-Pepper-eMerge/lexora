@@ -100,9 +100,7 @@ def _store() -> _LocalFaiss:
 def embed_texts(texts: List[str]) -> List[List[float]]:
     if not texts:
         return []
-    emb = get_embeddings()
-    # langchain client batches internally
-    return emb.embed_documents(texts)
+    return get_embeddings().embed_documents(texts)
 
 
 def embed_query(text: str) -> List[float]:
@@ -111,36 +109,22 @@ def embed_query(text: str) -> List[float]:
 
 def add_chunks(*, doc_id: int, case_id: int, filename: str,
                chunks: List["Chunk"]) -> int:                # noqa: F821
-    """Embed + persist chunks. Returns number of vectors added."""
-    if not chunks:
+    if not chunks or not get_settings().azure_search_endpoint:
         return 0
-    # Batch embed
-    texts = [c.text for c in chunks]
-    vectors: List[List[float]] = []
-    BATCH = 64
-    for i in range(0, len(texts), BATCH):
-        vectors.extend(embed_texts(texts[i:i + BATCH]))
-    metas = [{
-        "doc_id": doc_id, "case_id": case_id, "filename": filename,
-        "page": c.page, "section": c.section, "text": c.text,
-    } for c in chunks]
-
-    s = get_settings()
-    if s.azure_search_endpoint:
-        return _add_to_azure_search(vectors, metas)
-    with _LOCK:
-        _store().add(vectors, metas)
-    return len(vectors)
+    vectors = embed_texts([c.text for c in chunks])
+    metas = [
+        {"doc_id": doc_id, "case_id": case_id, "filename": filename,
+         "page": c.page, "section": c.section, "text": c.text}
+        for c in chunks
+    ]
+    return _add_to_azure_search(vectors, metas)
 
 
 def semantic_search(query: str, *, k: int = 6,
                     case_id: Optional[int] = None) -> List[dict]:
-    s = get_settings()
-    if s.azure_search_endpoint:
-        return _search_azure(query, k=k, case_id=case_id)
-    qv = embed_query(query)
-    with _LOCK:
-        return _store().search(qv, k=k, filter_case_id=case_id)
+    if not get_settings().azure_search_endpoint:
+        return []
+    return _search_azure(query, k=k, case_id=case_id)
 
 
 # --------------------------------------------------------------------- #
@@ -186,6 +170,13 @@ def _search_azure(query: str, *, k: int, case_id: Optional[int]):
 
 def index_stats() -> dict:
     s = get_settings()
-    if s.azure_search_endpoint:
-        return {"backend": "azure-ai-search", "index": s.azure_search_index_name}
-    return {"backend": "faiss-local", "vectors": _store().size}
+    if not s.azure_search_endpoint:
+        return {"backend": "disabled", "vectors": 0}
+    try:
+        client = get_search_client()
+        results = client.search(search_text="*", top=0, include_total_count=True)
+        count = results.get_count()
+        return {"backend": "azure_search", "index": s.azure_search_index_name, "vectors": count or 0}
+    except Exception as exc:
+        log.warning("index_stats error: %s", exc)
+        return {"backend": "azure_search", "index": s.azure_search_index_name, "vectors": -1}

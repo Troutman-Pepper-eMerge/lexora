@@ -4,12 +4,13 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import APP_NAME, APP_TAGLINE, __version__
+from .auth import principal_from_cookie
 from .config import get_settings
 from .database import init_db
 from .routers import analytics as analytics_router
@@ -19,7 +20,6 @@ from .routers import cases as cases_router
 from .routers import chat as chat_router
 from .routers import documents as documents_router
 from .routers import notifications as notifications_router
-from .seed import seed
 
 settings = get_settings()
 logging.basicConfig(
@@ -41,12 +41,6 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup():
     init_db()
-    seed()
-    # Backfill history-timeline milestones for any pre-existing cases.
-    from .database import session_scope
-    from .timeline import backfill_all
-    with session_scope() as db:
-        backfill_all(db)
 
 
 # --- API routers ----
@@ -136,9 +130,13 @@ if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
     @app.get("/")
-    def index():
+    def index(request: Request):
+        if not settings.demo_mode and not principal_from_cookie(request):
+            return RedirectResponse("/api/auth/login", status_code=302)
         return FileResponse(str(FRONTEND_DIR / "index.html"))
 
     @app.get("/login")
     def login_page():
+        if not settings.demo_mode:
+            return RedirectResponse("/api/auth/login", status_code=302)
         return FileResponse(str(FRONTEND_DIR / "login.html"))

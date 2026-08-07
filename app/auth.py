@@ -16,7 +16,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-import jwt
 from fastapi import Depends, HTTPException, Request, status
 from itsdangerous import BadSignature, URLSafeSerializer
 
@@ -73,27 +72,29 @@ def _from_cookie(token: str) -> Optional[Principal]:
     )
 
 
+def _strip_app_role(raw: str) -> str:
+    return raw.removeprefix("App.")
+
+
 def _from_bearer(token: str) -> Optional[Principal]:
-    """Validate an Entra ID JWT.  Signature validation is intentionally
-    lax here so the demo can be exercised without spinning up real JWKS;
-    in production, fetch the tenant JWKS and verify properly."""
-    s = get_settings()
-    try:
-        claims = jwt.decode(
-            token,
-            options={"verify_signature": False, "verify_aud": False, "verify_exp": False},
-        )
-    except jwt.PyJWTError:
-        return None
-    if s.azure_tenant_id and claims.get("tid") and claims["tid"] != s.azure_tenant_id:
+    from .entra import verify_bearer
+    claims = verify_bearer(token)
+    if claims is None:
         return None
     roles = claims.get("roles") or []
-    role = roles[0] if roles else "Paralegal"
+    role = _strip_app_role(roles[0]) if roles else "Paralegal"
     return Principal(
         email=claims.get("preferred_username") or claims.get("upn") or claims.get("email", ""),
         display_name=claims.get("name", "Entra User"),
         role=role,
     )
+
+
+def principal_from_cookie(request: Request) -> Optional[Principal]:
+    cookie = request.cookies.get(COOKIE_NAME)
+    if not cookie:
+        return None
+    return _from_cookie(cookie)
 
 
 async def current_principal(request: Request) -> Principal:

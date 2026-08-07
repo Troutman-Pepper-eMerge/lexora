@@ -6,7 +6,7 @@ window.LEXORA = (function () {
       headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
       ...opts,
     });
-    if (r.status === 401) { window.location.href = "/login"; throw new Error("unauth"); }
+    if (r.status === 401) { window.location.href = "/api/auth/login"; throw new Error("unauth"); }
     if (!r.ok) {
       let detail = "";
       try { detail = (await r.json()).detail || ""; } catch { detail = r.statusText; }
@@ -83,12 +83,12 @@ window.LEXORA = (function () {
       who.innerHTML = `<strong>${principal.display_name}</strong><small>${principal.role} · ${principal.department || ""}</small>`;
       window.LEXORA_PRINCIPAL = principal;
     } catch (e) {
-      window.location.href = "/login";
+      window.location.href = "/api/auth/login";
       return;
     }
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await api("/api/auth/logout", { method: "POST" });
-      window.location.href = "/login";
+      window.location.href = "/api/auth/login";
     });
     window.dispatchEvent(new CustomEvent("lexora:ready"));
   })();

@@ -10,7 +10,7 @@
   async function loadCases() {
     try {
       const { cases } = await LEXORA.api("/api/cases?limit=200");
-      caseSel.innerHTML = '<option value="">No case (general)</option>' +
+      caseSel.innerHTML = '<option value="">No matter (general)</option>' +
         cases.map(c => `<option value="${c.id}">${c.case_number} — ${c.title}</option>`).join("");
     } catch {}
   }

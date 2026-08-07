@@ -10,7 +10,7 @@ import random
 from datetime import datetime, timedelta
 
 from .database import session_scope
-from .models import (Appointment, Case, CaseNote, Document, Notification, User)
+from .models import (Appointment, Case, CaseEvent, CaseNote, Document, Notification, User)
 
 random.seed(42)
 
@@ -53,10 +53,20 @@ OPPOSING = ["Skadden Arps", "Latham & Watkins", "DLA Piper",
             "Wachtell Lipton", "Kirkland & Ellis", "Sidley Austin"]
 
 
-def seed() -> None:
+def seed(force: bool = False) -> None:
     with session_scope() as db:
         if db.query(User).count() > 0:
-            return  # already seeded
+            if not force:
+                print("Database already contains data. Use --force to reseed.")
+                return
+
+    if force:
+        with session_scope() as db:
+            for model in (Notification, Appointment, CaseNote, Document, CaseEvent, Case, User):
+                db.query(model).delete(synchronize_session=False)
+        print("Existing data cleared.")
+
+    with session_scope() as db:
 
         # ---- Users ----
         user_map: dict[str, User] = {}
@@ -164,7 +174,12 @@ def seed() -> None:
 
 
 if __name__ == "__main__":
+    import argparse
     from .database import init_db
+    parser = argparse.ArgumentParser(description="Seed the LEXORA demo database.")
+    parser.add_argument("--force", action="store_true",
+                        help="Truncate existing data and reseed.")
+    args = parser.parse_args()
     init_db()
-    seed()
+    seed(force=args.force)
     print("LEXORA database seeded.")

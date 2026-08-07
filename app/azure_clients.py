@@ -1,10 +1,9 @@
-"""Azure clients constructed with RBAC (DefaultAzureCredential).
+"""Azure clients with support for both API key and RBAC authentication.
 
-KEY-BASED AUTHENTICATION IS DISABLED ON THE TENANT.
-All Azure resources are accessed via Entra ID identities.
-The runtime principal (developer az-cli login, Managed Identity, or
-service principal) must hold these role assignments:
+When AZURE_OPENAI_API_KEY is set, uses key-based authentication.
+Otherwise falls back to RBAC (DefaultAzureCredential).
 
+For RBAC, the runtime principal must hold these role assignments:
   * Azure OpenAI resource  -> "Cognitive Services OpenAI User"
   * Azure AI Search (opt.) -> "Search Index Data Contributor"
 """
@@ -35,35 +34,66 @@ def get_token_provider():
 @lru_cache
 def get_aoai_client() -> AzureOpenAI:
     s = get_settings()
-    return AzureOpenAI(
-        azure_endpoint=s.azure_openai_endpoint,
-        api_version=s.azure_openai_api_version,
-        azure_ad_token_provider=get_token_provider(),
-    )
+    if s.azure_openai_api_key:
+        # Use API key authentication
+        return AzureOpenAI(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_key=s.azure_openai_api_key,
+            api_version=s.azure_openai_api_version,
+        )
+    else:
+        # Use RBAC authentication
+        return AzureOpenAI(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            azure_ad_token_provider=get_token_provider(),
+        )
 
 
 @lru_cache
 def get_chat_llm(temperature: float = 0.1) -> AzureChatOpenAI:
     s = get_settings()
-    return AzureChatOpenAI(
-        azure_endpoint=s.azure_openai_endpoint,
-        api_version=s.azure_openai_api_version,
-        azure_deployment=s.azure_openai_chat_deployment,
-        azure_ad_token_provider=get_token_provider(),
-        temperature=temperature,
-        streaming=False,
-    )
+    if s.azure_openai_api_key:
+        # Use API key authentication
+        return AzureChatOpenAI(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_key=s.azure_openai_api_key,
+            api_version=s.azure_openai_api_version,
+            azure_deployment=s.azure_openai_chat_deployment,
+            temperature=temperature,
+            streaming=False,
+        )
+    else:
+        # Use RBAC authentication
+        return AzureChatOpenAI(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            azure_deployment=s.azure_openai_chat_deployment,
+            azure_ad_token_provider=get_token_provider(),
+            temperature=temperature,
+            streaming=False,
+        )
 
 
 @lru_cache
 def get_embeddings() -> AzureOpenAIEmbeddings:
     s = get_settings()
-    return AzureOpenAIEmbeddings(
-        azure_endpoint=s.azure_openai_endpoint,
-        api_version=s.azure_openai_api_version,
-        azure_deployment=s.azure_openai_embedding_deployment,
-        azure_ad_token_provider=get_token_provider(),
-    )
+    if s.azure_openai_api_key:
+        # Use API key authentication
+        return AzureOpenAIEmbeddings(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_key=s.azure_openai_api_key,
+            api_version=s.azure_openai_api_version,
+            azure_deployment=s.azure_openai_embedding_deployment,
+        )
+    else:
+        # Use RBAC authentication
+        return AzureOpenAIEmbeddings(
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            azure_deployment=s.azure_openai_embedding_deployment,
+            azure_ad_token_provider=get_token_provider(),
+        )
 
 
 def get_search_client() -> Optional[object]:

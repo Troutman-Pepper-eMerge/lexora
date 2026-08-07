@@ -74,7 +74,7 @@
             titleColor: c.text,
             bodyColor: c.text,
             callbacks: {
-              label: (ctx) => `${ctx.label}: ${ctx.parsed} cases`,
+              label: (ctx) => `${ctx.label}: ${ctx.parsed} matters`,
             },
           },
         },

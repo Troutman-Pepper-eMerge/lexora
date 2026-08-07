@@ -2,6 +2,8 @@
 (function () {
   const tbody = document.querySelector("#caseTable tbody");
   const detail = document.getElementById("caseDetail");
+  const casesView = document.querySelector('.view[data-view="cases"]');
+  const listCard = document.getElementById("caseListCard");
   const search = document.getElementById("caseSearch");
   const statusSel = document.getElementById("caseStatus");
   const jurisSel = document.getElementById("caseJuris");
@@ -37,7 +39,7 @@
     _cases = cases;
     if (!statusSel.options.length || statusSel.options.length === 1) populateFilters();
     tbody.innerHTML = cases.map(rowHTML).join("") ||
-      `<tr><td colspan="8" class="muted">No cases match.</td></tr>`;
+      `<tr><td colspan="8" class="muted">No matters match.</td></tr>`;
     tbody.querySelectorAll("tr[data-id]").forEach(tr => {
       tr.addEventListener("click", () => showDetail(parseInt(tr.dataset.id)));
     });
@@ -86,7 +88,7 @@
       <details class="cd-timeline-wrap">
         <summary class="cd-timeline-toggle">
           <span class="tl-chevron" aria-hidden="true">▶</span>
-          <span class="tl-toggle-label">Case History Timeline</span>
+          <span class="tl-toggle-label">Matter History Timeline</span>
           <span class="tl-count">${items.length}</span>
         </summary>
         <ol class="cd-timeline">${rows}</ol>
@@ -95,7 +97,9 @@
 
   async function showDetail(id) {
     const c = await LEXORA.api(`/api/cases/${id}`);
+    listCard?.classList.add("hidden");
     detail.classList.remove("hidden");
+    casesView?.classList.add("detail-open");
     document.getElementById("cdTitle").textContent = `${c.case_number} — ${c.title}`;
     const priorityTone = (p) => {
       const s = String(p || "").toLowerCase();
@@ -160,8 +164,11 @@
     detail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  document.getElementById("cdClose")?.addEventListener("click",
-    () => detail.classList.add("hidden"));
+  document.getElementById("cdClose")?.addEventListener("click", () => {
+    detail.classList.add("hidden");
+    listCard?.classList.remove("hidden");
+    casesView?.classList.remove("detail-open");
+  });
 
   let _t;
   const debounced = () => { clearTimeout(_t); _t = setTimeout(load, 250); };
@@ -334,7 +341,7 @@
   $("ncForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = $("ncTitle").value.trim();
-    if (!title) { setStatus("Case title is required.", "warn"); return; }
+    if (!title) { setStatus("Matter title is required.", "warn"); return; }
     const payload = {
       title,
       client_name: $("ncClient").value.trim() || null,
@@ -357,14 +364,14 @@
         method: "POST", body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
       });
-      LEXORA.toast(`Case ${c.case_number} created`);
+      LEXORA.toast(`Matter ${c.case_number} created`);
       closeModal();
       await load();
       showDetail(c.id);
     } catch (err) {
       setStatus("Save failed: " + err.message, "error");
     } finally {
-      btn.disabled = false; btn.textContent = "Save case";
+      btn.disabled = false; btn.textContent = "Save matter";
     }
   });
 
@@ -373,6 +380,12 @@
   });
 
   window.addEventListener("lexora:view", (e) => {
-    if (e.detail.view === "cases") load();
+    if (e.detail.view === "cases") {
+      if (detail.classList.contains("hidden")) {
+        listCard?.classList.remove("hidden");
+        casesView?.classList.remove("detail-open");
+      }
+      load();
+    }
   });
 })();
