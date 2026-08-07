@@ -6,7 +6,7 @@
   const renderKpis = (k) => {
     const g = document.getElementById("kpiGrid");
     const items = [
-      { label: "Total Cases",       value: LEXORA.fmtNum(k.total_cases), sub: `${k.open_cases} open · ${k.closed_cases} closed` },
+      { label: "Total Matters",     value: LEXORA.fmtNum(k.total_cases), sub: `${k.open_cases} open · ${k.closed_cases} closed` },
       { label: "Critical Matters",  value: LEXORA.fmtNum(k.critical_cases), sub: "Require partner attention", cls: "danger" },
       { label: "Portfolio Value",   value: LEXORA.fmtMoney(k.total_value_usd), sub: "Estimated exposure / claim value" },
       { label: "Billable Hours",    value: LEXORA.fmtNum(Math.round(k.billable_hours)), sub: "Recorded against open matters" },
@@ -54,7 +54,7 @@
     const c = LEXORA.chartColors();
     charts.practice = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ label: "Cases", data: values,
+      data: { labels, datasets: [{ label: "Matters", data: values,
         backgroundColor: c.a1, borderRadius: 8 }] },
       options: baseOpts(),
     });
@@ -65,13 +65,10 @@
     const ctx = document.getElementById("chartFilings");
     const labels = Object.keys(data); const values = Object.values(data);
     const c = LEXORA.chartColors();
-    const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, "rgba(41,211,196,.55)");
-    grad.addColorStop(1, "rgba(41,211,196,0)");
     charts.filings = new Chart(ctx, {
       type: "line",
       data: { labels, datasets: [{ label: "Filings", data: values,
-        borderColor: c.a2, backgroundColor: grad, fill: true,
+        borderColor: c.a2, backgroundColor: "rgba(41,211,196,.20)", fill: true,
         tension: .35, pointRadius: 3, pointHoverRadius: 6,
         pointBackgroundColor: c.a2 }] },
       options: baseOpts(),

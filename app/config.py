@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +11,7 @@ class Settings(BaseSettings):
 
     # Azure OpenAI
     azure_openai_endpoint: str = ""
+    azure_openai_api_key: str = ""  # If provided, uses key-based auth instead of RBAC
     azure_openai_api_version: str = "2024-10-21"
     azure_openai_chat_deployment: str = "gpt-4o"
     azure_openai_embedding_deployment: str = "text-embedding-3-large"
@@ -24,6 +23,8 @@ class Settings(BaseSettings):
     # Entra ID
     azure_tenant_id: str = ""
     azure_client_id: str = ""
+    azure_client_secret: str = ""
+    azure_redirect_uri: str = "http://localhost:8000/api/auth/callback"
 
     # App
     app_env: str = "development"
@@ -32,10 +33,12 @@ class Settings(BaseSettings):
     app_secret: str = "lexora-dev-secret"
     log_level: str = "INFO"
 
-    # Storage
+    # Database
+    database_url: str = "sqlite:///./data/lexora.db"
+
+    # Storage (reserved for future use)
     data_dir: str = "./data"
     docs_dir: str = "./docs"
-    sqlite_path: str = "./data/lexora.db"
     vector_index_path: str = "./data/vector_index"
 
     # MCP
@@ -43,12 +46,10 @@ class Settings(BaseSettings):
     mcp_host: str = "127.0.0.1"
     mcp_port: int = 8765
 
-    demo_mode: bool = True
+    demo_mode: bool = False
 
     def ensure_dirs(self) -> None:
-        for p in (self.data_dir, self.docs_dir, self.vector_index_path,
-                  Path(self.docs_dir) / "uploads"):
-            Path(p).mkdir(parents=True, exist_ok=True)
+        pass
 
 
 @lru_cache

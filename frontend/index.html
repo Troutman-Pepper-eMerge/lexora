@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -28,7 +28,7 @@
 
     <nav class="nav-tabs" id="navTabs">
       <button class="tab active" data-view="dashboard">Dashboard</button>
-      <button class="tab" data-view="cases">Cases</button>
+      <button class="tab" data-view="cases">Matters</button>
       <button class="tab" data-view="documents">Documents</button>
       <button class="tab" data-view="chat">Agent</button>
       <button class="tab" data-view="analytics">Analytics</button>
@@ -65,11 +65,11 @@
 
       <div class="grid-2">
         <div class="glass card">
-          <h3>Caseload by Status</h3>
+          <h3>Matter Load by Status</h3>
           <div class="chart-box"><canvas id="chartStatus"></canvas></div>
         </div>
         <div class="glass card">
-          <h3>Cases by Practice Area</h3>
+          <h3>Matters by Practice Area</h3>
           <div class="chart-box"><canvas id="chartPractice"></canvas></div>
         </div>
       </div>
@@ -97,23 +97,23 @@
     <!-- CASES -->
     <section class="view" data-view="cases">
       <div class="view-header">
-        <h2>Case Portfolio</h2>
+        <h2>Matter Portfolio</h2>
         <div class="filter-row">
-          <input id="caseSearch" placeholder="Search cases, clients, numbers…" />
+          <input id="caseSearch" placeholder="Search matters, clients, numbers…" />
           <select id="caseStatus">
             <option value="">All Statuses</option>
           </select>
           <select id="caseJuris">
             <option value="">All Jurisdictions</option>
           </select>
-          <button id="newCaseBtn" class="btn-primary">+ New Case</button>
+          <button id="newCaseBtn" class="btn-primary">+ New Matter</button>
         </div>
       </div>
-      <div class="glass card fill">
+      <div id="caseListCard" class="glass card fill">
         <div class="table-wrap scroll-body">
           <table class="data-table" id="caseTable">
             <thead><tr>
-              <th>Case #</th><th>Title</th><th>Client</th><th>Practice</th>
+              <th>Matter #</th><th>Title</th><th>Client</th><th>Practice</th>
               <th>Jurisdiction</th><th>Status</th><th>Priority</th><th>Value</th>
             </tr></thead>
             <tbody></tbody>
@@ -141,11 +141,11 @@
         <div id="dropzone" class="dropzone">
           <div class="dz-icon">⤓</div>
           <p><strong>Drop a file here</strong> to upload</p>
-          <p class="muted small">Optionally tag with a case before uploading</p>
+          <p class="muted small">Optionally tag with a matter before uploading</p>
           <input type="file" id="fileInput" hidden
                  accept=".pdf,.docx,.pptx,.json,.txt,.md" />
           <div class="dz-controls">
-            <select id="uploadCaseId"><option value="">No case (general)</option></select>
+            <select id="uploadCaseId"><option value="">No matter (general)</option></select>
             <button id="browseBtn" class="btn-primary">Browse files</button>
           </div>
         </div>
@@ -157,7 +157,7 @@
         <div class="table-wrap scroll-body">
           <table class="data-table" id="docTable">
             <thead><tr>
-              <th>File</th><th>Case</th><th>Type</th><th>Pages</th>
+              <th>File</th><th>Matter</th><th>Type</th><th>Pages</th>
               <th>Category</th><th>Indexed</th><th>Summary</th><th></th>
             </tr></thead>
             <tbody></tbody>
@@ -171,7 +171,7 @@
       <div class="view-header">
         <h2>LEXORA Agent</h2>
         <p class="muted">LangGraph + Azure OpenAI + FastMCP tools. Ask anything
-          about cases, documents, deadlines or analytics.</p>
+        about matters, documents, deadlines or analytics.</p>
       </div>
 
       <div class="chat-shell">
@@ -181,10 +181,10 @@
           <h3 style="margin-top:1.2rem">Try asking…</h3>
           <div class="suggest-pills">
             <button type="button" class="suggest-pill">Which state takes the longest to adjudicate?</button>
-            <button type="button" class="suggest-pill">Summarize all critical cases.</button>
+            <button type="button" class="suggest-pill">Summarize all critical matters.</button>
             <button type="button" class="suggest-pill">List my upcoming filing deadlines in the next 14 days.</button>
             <button type="button" class="suggest-pill">Reschedule appointment 3 to next Tuesday 10am, reason "judge conflict".</button>
-            <button type="button" class="suggest-pill">Generate a case report for case 1.</button>
+            <button type="button" class="suggest-pill">Generate a matter report for matter 1.</button>
           </div>
         </aside>
 
@@ -213,7 +213,7 @@
           <div class="chart-box tall"><canvas id="chartAdj"></canvas></div>
         </div>
         <div class="glass card">
-          <h3>Cases by Jurisdiction</h3>
+          <h3>Matters by Jurisdiction</h3>
           <div class="chart-box tall"><canvas id="chartJuris"></canvas></div>
         </div>
       </div>
@@ -223,7 +223,7 @@
         <div class="table-wrap scroll-body">
           <table class="data-table" id="adjTable">
             <thead><tr>
-              <th>Jurisdiction</th><th>Cases</th><th>Avg Days</th>
+              <th>Jurisdiction</th><th>Matters</th><th>Avg Days</th>
               <th>Δ vs National</th>
             </tr></thead>
             <tbody></tbody>
@@ -242,7 +242,7 @@
         <div class="table-wrap scroll-body">
           <table class="data-table" id="apptTable">
             <thead><tr>
-              <th>When</th><th>Title</th><th>Type</th><th>Case</th>
+              <th>When</th><th>Title</th><th>Type</th><th>Matter</th>
               <th>Location</th><th>Status</th><th></th>
             </tr></thead>
             <tbody></tbody>
@@ -321,7 +321,7 @@
               <button class="pd-card" data-cap="intake" data-pd-anim>
                 <span class="pd-card-ico">🧾</span>
                 <span class="pd-card-t">Intelligent intake</span>
-                <span class="pd-card-s">Drop a complaint — AI extracts every field and opens the case</span>
+                <span class="pd-card-s">Drop a complaint — AI extracts every field and opens the matter</span>
                 <span class="pd-card-link">How it works ›</span>
               </button>
               <button class="pd-card" data-cap="rag" data-pd-anim>
@@ -435,7 +435,7 @@
               </button>
               <button class="pd-tile" data-goto-view="cases" data-pd-anim>
                 <span class="pd-tile-ico">⚖️</span>
-                <span class="pd-tile-t">Case Portfolio</span>
+                <span class="pd-tile-t">Matter Portfolio</span>
                 <span class="pd-tile-s">Every matter, with AI-assisted intake</span>
                 <span class="pd-tile-go">Open ›</span>
               </button>
@@ -491,7 +491,7 @@
             <div class="pd-cta" data-pd-anim>
               <button class="pd-cta-card" data-goto-view="cases" data-pd-anim>
                 <span class="pd-cta-ico">⚖️</span>
-                <span class="pd-cta-t">New Case Intake</span>
+                <span class="pd-cta-t">New Matter Intake</span>
                 <span class="pd-cta-s">Drop a complaint &amp; watch AI fill the fields</span>
               </button>
               <button class="pd-cta-card" data-goto-view="chat" data-pd-anim>
@@ -592,13 +592,13 @@
     </div>
   </div>
 
-  <!-- New Case intake modal -->
+  <!-- New Matter intake modal -->
   <div id="newCaseModal" class="modal hidden">
     <div class="glass modal-card intake-card">
       <div class="intake-head">
         <div>
-          <h3>New Case Intake</h3>
-          <span class="muted intake-caseno">Case # auto-assigned on save</span>
+          <h3>New Matter Intake</h3>
+          <span class="muted intake-caseno">Matter # auto-assigned on save</span>
         </div>
         <button class="btn-ghost intake-x" id="ncClose">✕</button>
       </div>
@@ -640,11 +640,11 @@
 
       <div class="intake-status hidden" id="ncStatus"></div>
 
-      <!-- The case form (shared by every mode) -->
+      <!-- The matter form (shared by every mode) -->
       <form id="ncForm" class="intake-form">
         <div class="intake-grid">
           <div class="fld span2">
-            <label>Case title <span class="req">*</span></label>
+            <label>Matter title <span class="req">*</span></label>
             <input type="text" id="ncTitle" required
               placeholder="e.g. Acme Corp v. Globex — Breach of Contract" />
           </div>
@@ -657,7 +657,7 @@
             <select id="ncPractice"></select>
           </div>
           <div class="fld">
-            <label>Case type</label>
+            <label>Matter type</label>
             <select id="ncType"></select>
           </div>
           <div class="fld">
@@ -700,7 +700,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-ghost" id="ncCancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="ncSave">Save case</button>
+          <button type="submit" class="btn-primary" id="ncSave">Save matter</button>
         </div>
       </form>
     </div>
@@ -746,7 +746,7 @@
       <div class="pr-picker">
         <div class="fld" style="flex:1">
           <label>Select a matter</label>
-          <select id="prCaseSel"><option value="">Loading cases…</option></select>
+          <select id="prCaseSel"><option value="">Loading matters…</option></select>
         </div>
         <button class="btn-primary" id="prRun">✦ Run prediction</button>
       </div>
@@ -757,6 +757,10 @@
         <div class="pr-metrics">
           <div class="pr-metric">
             <div class="pr-gauge" id="prGauge">
+              <svg class="pr-gauge-ring" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="pr-gauge-track" cx="50" cy="50" r="44"></circle>
+                <circle class="pr-gauge-progress" id="prGaugeProgress" cx="50" cy="50" r="44"></circle>
+              </svg>
               <span class="pr-gauge-val" id="prSettlePct">—</span>
             </div>
             <div class="pr-metric-label">Settlement likelihood</div>
