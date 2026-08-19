@@ -6,6 +6,17 @@
   const rsWhen    = document.getElementById("rsWhen");
   const rsReason  = document.getElementById("rsReason");
 
+  // New appointment modal elements
+  const newApptModal = document.getElementById("newApptModal");
+  const newApptForm  = document.getElementById("newApptForm");
+  const naCase       = document.getElementById("naCase");
+  const naTitle      = document.getElementById("naTitle");
+  const naType       = document.getElementById("naType");
+  const naWhen       = document.getElementById("naWhen");
+  const naDuration   = document.getElementById("naDuration");
+  const naLocation   = document.getElementById("naLocation");
+  const naAttendees  = document.getElementById("naAttendees");
+
   // Custom datetime picker bits
   const dateBtn    = document.getElementById("rsDateBtn");
   const dateLabel  = document.getElementById("rsDateLabel");
@@ -180,6 +191,94 @@
       LEXORA.toast(`Rescheduled #${_currentId}; attendees notified`);
       modal.classList.add("hidden"); load();
     } catch (e) { LEXORA.toast(e.message); }
+  });
+
+  // Load matters for dropdown
+  async function loadMattersDropdown() {
+    try {
+      const { cases } = await LEXORA.api("/api/cases");
+      const list = Array.isArray(cases) ? cases : [];
+      naCase.innerHTML = "";
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "Select a matter...";
+      naCase.appendChild(blank);
+      list.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = String(c.id);
+        opt.textContent = `${c.case_number} — ${c.title}`;
+        naCase.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("Failed to load matters:", e);
+    }
+  }
+
+  // New appointment modal handlers
+  document.getElementById("newApptBtn")?.addEventListener("click", async () => {
+    const role = window.LEXORA_PRINCIPAL?.role;
+    if (!role || !["Partner", "Associate", "Paralegal"].includes(role)) {
+      LEXORA.toast("You don't have permission to schedule appointments.");
+      return;
+    }
+    newApptForm.reset();
+    await loadMattersDropdown();
+    // Set default datetime to tomorrow at 10 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    const iso = tomorrow.toISOString().slice(0, 16);
+    naWhen.value = iso;
+    newApptModal.classList.remove("hidden");
+  });
+
+  document.getElementById("naClose")?.addEventListener("click", () => {
+    newApptModal.classList.add("hidden");
+  });
+
+  document.getElementById("naCancel")?.addEventListener("click", () => {
+    newApptModal.classList.add("hidden");
+  });
+
+  newApptModal?.addEventListener("click", (e) => {
+    if (e.target === newApptModal) newApptModal.classList.add("hidden");
+  });
+
+  newApptForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const attendees = naAttendees.value.trim()
+      ? naAttendees.value.split(",").map(s => s.trim()).filter(Boolean)
+      : [];
+
+    const payload = {
+      case_id: parseInt(naCase.value, 10),
+      title: naTitle.value.trim(),
+      appointment_type: naType.value,
+      scheduled_at: naWhen.value,
+      duration_minutes: parseInt(naDuration.value, 10),
+      location: naLocation.value.trim(),
+      attendees,
+    };
+
+    const btn = document.getElementById("naSave");
+    btn.disabled = true;
+    btn.textContent = "Scheduling...";
+
+    try {
+      await LEXORA.api("/api/appointments", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+      });
+      LEXORA.toast("Appointment scheduled successfully");
+      newApptModal.classList.add("hidden");
+      load();
+    } catch (err) {
+      LEXORA.toast("Failed to schedule: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Schedule";
+    }
   });
 
   window.addEventListener("lexora:view", (e) => {
