@@ -206,6 +206,11 @@
 
   // New appointment modal handlers
   document.getElementById("newApptBtn")?.addEventListener("click", async () => {
+    const role = window.LEXORA_PRINCIPAL?.role;
+    if (!role || !["Partner", "Associate", "Paralegal"].includes(role)) {
+      LEXORA.toast("You don't have permission to schedule appointments.");
+      return;
+    }
     newApptForm.reset();
     await loadMattersDropdown();
     // Set default datetime to tomorrow at 10 AM
