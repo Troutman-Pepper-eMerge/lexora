@@ -114,7 +114,7 @@
           <table class="data-table" id="caseTable">
             <thead><tr>
               <th>Matter #</th><th>Title</th><th>Client</th><th>Practice</th>
-              <th>Jurisdiction</th><th>Status</th><th>Priority</th><th>Value</th>
+              <th>Jurisdiction</th><th>Status</th><th>Priority</th><th>Value</th><th>Actions</th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -123,7 +123,11 @@
 
       <div id="caseDetail" class="glass card hidden">
         <div class="card-head"><h3 id="cdTitle"></h3>
-          <button id="cdClose" class="btn-ghost">Close</button></div>
+          <div style="display:flex; gap:8px">
+            <button id="cdEdit" class="btn-primary hidden">Edit</button>
+            <button id="cdClose" class="btn-ghost">Close</button>
+          </div>
+        </div>
         <div id="cdBody"></div>
       </div>
     </section>
@@ -237,6 +241,7 @@
       <div class="view-header">
         <h2>Upcoming Calendar</h2>
         <p class="muted">Hearings, depositions, filings, and client meetings.</p>
+        <button id="newApptBtn" class="btn-primary">+ New Appointment</button>
       </div>
       <div class="glass card fill">
         <div class="table-wrap scroll-body">
@@ -269,6 +274,7 @@
             <option value="failed">Failed</option>
           </select>
           <button id="ntRefresh" class="btn-ghost">Refresh</button>
+          <button id="newNotifyBtn" class="btn-primary">+ Send Notification</button>
         </div>
       </div>
 
@@ -592,13 +598,292 @@
     </div>
   </div>
 
+  <!-- New Appointment modal -->
+  <div id="newApptModal" class="modal hidden">
+    <div class="glass modal-card intake-card">
+      <div class="intake-head">
+        <div>
+          <h3>Schedule New Appointment</h3>
+          <span class="muted intake-caseno">Add calendar event for a matter</span>
+        </div>
+        <button class="btn-ghost intake-x" id="naClose">✕</button>
+      </div>
+
+      <form id="newApptForm" class="intake-form">
+        <div class="intake-grid">
+          <div class="fld">
+            <label>Matter <span class="req">*</span></label>
+            <select id="naCase" required>
+              <option value="">Select a matter...</option>
+            </select>
+          </div>
+
+          <div class="fld span2">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" id="naTitle" placeholder="e.g. Client deposition, Status conference" required />
+          </div>
+
+          <div class="fld">
+            <label>Type</label>
+            <select id="naType">
+              <option>Meeting</option>
+              <option>Deposition</option>
+              <option>Hearing</option>
+              <option>Filing Deadline</option>
+              <option>Court Appearance</option>
+              <option>Conference</option>
+            </select>
+          </div>
+
+          <div class="fld">
+            <label>Date & Time <span class="req">*</span></label>
+            <input type="datetime-local" id="naWhen" required />
+          </div>
+
+          <div class="fld">
+            <label>Duration (minutes)</label>
+            <input type="number" id="naDuration" value="60" min="15" step="15" />
+          </div>
+
+          <div class="fld span2">
+            <label>Location</label>
+            <input type="text" id="naLocation" placeholder="e.g. Conference Room A, Courtroom 5B" />
+          </div>
+
+          <div class="fld span3">
+            <label>Attendees (emails, comma-separated)</label>
+            <input type="text" id="naAttendees" placeholder="e.g. john@example.com, jane@example.com, client@example.com" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="naCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="naSave">Schedule appointment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Notification Rule modal -->
+  <div id="newNotifyModal" class="modal hidden">
+    <div class="glass modal-card intake-card">
+      <div class="intake-head">
+        <div>
+          <h3>Create Notification Rule</h3>
+          <span class="muted intake-caseno">Get notified when events happen</span>
+        </div>
+        <button class="btn-ghost intake-x" id="nnClose">✕</button>
+      </div>
+
+      <form id="newNotifyForm" class="intake-form">
+        <div class="intake-grid">
+          <div class="fld span3">
+            <label>Rule Name <span class="req">*</span></label>
+            <input type="text" id="nnRuleName" placeholder="e.g. Notify me of trial status changes" required />
+          </div>
+
+          <div class="fld span2">
+            <label>When... <span class="req">*</span></label>
+            <select id="nnTrigger" required>
+              <option value="">Select trigger event...</option>
+              <option value="matter_assigned">I'm assigned to a matter</option>
+              <option value="status_changed">Matter status changes</option>
+              <option value="calendar_event">Calendar event is approaching</option>
+              <option value="document_uploaded">Document is uploaded</option>
+              <option value="analytics_threshold">Analytics threshold is met</option>
+              <option value="matter_created">New matter is created</option>
+            </select>
+          </div>
+
+          <div class="fld">
+            <label>Notify via <span class="req">*</span></label>
+            <select id="nnChannel" required>
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+              <option value="inapp">In-app</option>
+            </select>
+          </div>
+
+          <!-- Conditional filters based on trigger type -->
+          <div class="fld span3" id="nnScopeSection">
+            <label>For which matters?</label>
+            <select id="nnScope">
+              <option value="all_my_matters">All matters I'm assigned to</option>
+              <option value="specific_matters">Specific matters...</option>
+              <option value="all_matters">All matters (Admin only)</option>
+            </select>
+          </div>
+
+          <div class="fld span3 hidden" id="nnSpecificMatters">
+            <label>Select specific matters</label>
+            <select id="nnMatters" multiple size="5">
+              <!-- Populated dynamically -->
+            </select>
+            <div class="muted small">Hold Ctrl/Cmd to select multiple</div>
+          </div>
+
+          <!-- Additional conditions -->
+          <div class="fld span3 hidden" id="nnConditionsSection">
+            <label>Additional conditions (optional)</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div>
+                <label class="small">Status</label>
+                <select id="nnCondStatus">
+                  <option value="">Any</option>
+                  <option value="Open">Open</option>
+                  <option value="Discovery">Discovery</option>
+                  <option value="Trial">Trial</option>
+                  <option value="Settled">Settled</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Priority</label>
+                <select id="nnCondPriority">
+                  <option value="">Any</option>
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Practice Area</label>
+                <select id="nnCondPractice">
+                  <option value="">Any</option>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Matter created filter -->
+          <div class="fld span3 hidden" id="nnMatterCreatedFilter">
+            <label>Filter new matters</label>
+            <div>
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="nnOnlyMyMatters" />
+                <span>Only notify for matters I'm assigned to</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Analytics threshold configuration -->
+          <div class="fld span3 hidden" id="nnThresholdSection">
+            <label>Analytics Threshold <span class="req">*</span></label>
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px;">
+              <div>
+                <label class="small">Metric</label>
+                <select id="nnMetric">
+                  <option value="total_case_value">Total case value</option>
+                  <option value="case_count">Number of cases</option>
+                  <option value="high_priority_count">High priority cases</option>
+                  <option value="avg_billable_hours">Avg billable hours</option>
+                  <option value="trial_cases">Cases in trial</option>
+                  <option value="pattern_detected">Pattern detected</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Operator</label>
+                <select id="nnOperator">
+                  <option value="greater_than">Greater than</option>
+                  <option value="less_than">Less than</option>
+                  <option value="equals">Equals</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Value</label>
+                <input type="number" id="nnThresholdValue" placeholder="e.g. 1000000" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Message configuration -->
+          <div class="fld span3">
+            <label>Notification content</label>
+            <select id="nnMessageType">
+              <option value="auto_summary">Auto-generate summary</option>
+              <option value="custom_message">Custom message</option>
+              <option value="report_link">Link to report/page</option>
+            </select>
+          </div>
+
+          <div class="fld span3 hidden" id="nnCustomMessage">
+            <label>Custom message template</label>
+            <textarea id="nnTemplate" rows="3" placeholder="Use {matter_number}, {title}, {status} as placeholders..."></textarea>
+          </div>
+
+          <div class="fld span3 hidden" id="nnReportLink">
+            <label>Report/page to link</label>
+            <select id="nnReportPath">
+              <option value="/analytics/dashboard">Analytics Dashboard</option>
+              <option value="/analytics/patterns">Pattern Detection</option>
+              <option value="/analytics/predictor">Outcome Predictor</option>
+              <option value="/calendar">Calendar</option>
+              <option value="/matters">Matters List</option>
+            </select>
+          </div>
+
+          <!-- Advanced Options (collapsible) -->
+          <div class="fld span3">
+            <details id="nnAdvancedToggle">
+              <summary style="cursor: pointer; font-weight: 600; margin-bottom: 12px;">⚙ Advanced Options</summary>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 4px;">
+                <div>
+                  <label class="small">Condition Logic</label>
+                  <select id="nnConditionLogic">
+                    <option value="AND">Match ALL conditions (AND)</option>
+                    <option value="OR">Match ANY condition (OR)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="small">Max notifications per day</label>
+                  <input type="number" id="nnMaxPerDay" min="1" max="100" placeholder="Unlimited" />
+                </div>
+
+                <div>
+                  <label class="small">
+                    <input type="checkbox" id="nnBusinessHours" /> Business hours only (9am-5pm)
+                  </label>
+                </div>
+
+                <div>
+                  <label class="small">
+                    <input type="checkbox" id="nnWeekdaysOnly" /> Weekdays only
+                  </label>
+                </div>
+
+                <div style="grid-column: span 2;">
+                  <label class="small">Digest mode</label>
+                  <select id="nnDigestMode">
+                    <option value="">Send immediately</option>
+                    <option value="hourly">Hourly digest</option>
+                    <option value="daily">Daily digest (end of day)</option>
+                    <option value="weekly">Weekly digest (Friday)</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="nnCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="nnSave">Create rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- New Matter intake modal -->
   <div id="newCaseModal" class="modal hidden">
     <div class="glass modal-card intake-card">
       <div class="intake-head">
         <div>
-          <h3>New Matter Intake</h3>
-          <span class="muted intake-caseno">Matter # auto-assigned on save</span>
+          <h3 id="ncModalTitle">New Matter Intake</h3>
+          <span class="muted intake-caseno" id="ncModalSubhead">Matter # auto-assigned on save</span>
         </div>
         <button class="btn-ghost intake-x" id="ncClose">✕</button>
       </div>

@@ -20,6 +20,7 @@ from .routers import cases as cases_router
 from .routers import chat as chat_router
 from .routers import documents as documents_router
 from .routers import notifications as notifications_router
+from .routers import notification_rules as notification_rules_router
 
 settings = get_settings()
 logging.basicConfig(
@@ -46,7 +47,8 @@ def _startup():
 # --- API routers ----
 for r in (auth_router.router, cases_router.router, documents_router.router,
           chat_router.router, analytics_router.router,
-          appointments_router.router, notifications_router.router):
+          appointments_router.router, notifications_router.router,
+          notification_rules_router.router):
     app.include_router(r)
 
 

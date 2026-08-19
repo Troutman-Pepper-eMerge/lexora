@@ -7,9 +7,38 @@
   const search = document.getElementById("caseSearch");
   const statusSel = document.getElementById("caseStatus");
   const jurisSel = document.getElementById("caseJuris");
+  const editBtn = document.getElementById("cdEdit");
   let _cases = [];
+  let _detailCase = null;
+  const EDIT_ROLES = new Set(["Admin", "Partner", "Associate", "Paralegal"]);
+
+  function canEditMatters() {
+    const role = window.LEXORA_PRINCIPAL && window.LEXORA_PRINCIPAL.role;
+    const canEdit = EDIT_ROLES.has(role);
+    console.log('[canEditMatters]', {role, canEdit, principal: window.LEXORA_PRINCIPAL});
+    return canEdit;
+  }
+
+  function syncEditVisibility() {
+    if (!editBtn) {
+      console.warn('[syncEditVisibility] editBtn not found');
+      return;
+    }
+    const can = canEditMatters();
+    console.log('[syncEditVisibility] can edit:', can);
+    if (can) {
+      editBtn.classList.remove("hidden");
+    } else {
+      editBtn.classList.add("hidden");
+    }
+  }
+  // Don't call on initial load - wait for principal to be ready
+  // syncEditVisibility();
 
   function rowHTML(c) {
+    const actions = canEditMatters()
+      ? `<button class="btn-ghost case-edit-row" data-edit-id="${c.id}">Edit</button>`
+      : "—";
     return `<tr data-id="${c.id}">
       <td>${c.case_number}</td>
       <td>${c.title}</td>
@@ -19,6 +48,7 @@
       <td><span class="pill">${c.status || ''}</span></td>
       <td>${LEXORA.priorityPill(c.priority)}</td>
       <td>${LEXORA.fmtMoney(c.estimated_value)}</td>
+      <td>${actions}</td>
     </tr>`;
   }
 
@@ -39,7 +69,16 @@
     _cases = cases;
     if (!statusSel.options.length || statusSel.options.length === 1) populateFilters();
     tbody.innerHTML = cases.map(rowHTML).join("") ||
-      `<tr><td colspan="8" class="muted">No matters match.</td></tr>`;
+      `<tr><td colspan="9" class="muted">No matters match.</td></tr>`;
+    tbody.querySelectorAll("button[data-edit-id]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!canEditMatters()) return;
+        const id = parseInt(btn.dataset.editId, 10);
+        const c = _cases.find(row => row.id === id);
+        if (c) openEditModal(c);
+      });
+    });
     tbody.querySelectorAll("tr[data-id]").forEach(tr => {
       tr.addEventListener("click", () => showDetail(parseInt(tr.dataset.id)));
     });
@@ -97,6 +136,8 @@
 
   async function showDetail(id) {
     const c = await LEXORA.api(`/api/cases/${id}`);
+    _detailCase = c;
+    syncEditVisibility();
     listCard?.classList.add("hidden");
     detail.classList.remove("hidden");
     casesView?.classList.add("detail-open");
@@ -182,6 +223,7 @@
   const modal = document.getElementById("newCaseModal");
   const $ = (id) => document.getElementById(id);
   let _optionsLoaded = false;
+  let _editingCaseId = null;
 
   const fillSelect = (el, items, withBlank) => {
     el.innerHTML = (withBlank ? '<option value="">—</option>' : "") +
@@ -217,6 +259,7 @@
     $("ncFileName").textContent = "";
     setStatus("", "");
     switchMode("manual");
+    setEditMode(false);
   }
 
   function setStatus(msg, kind) {
@@ -232,6 +275,20 @@
     $("ncSourceUpload").hidden = mode !== "upload";
     $("ncSourcePaste").hidden = mode !== "paste";
     $("ncSourceApi").hidden = mode !== "api";
+  }
+
+  function setEditMode(enabled, caseNumber = "") {
+    if (!enabled) _editingCaseId = null;
+    $("ncModalTitle").textContent = enabled ? `Edit Matter ${caseNumber}` : "New Matter Intake";
+    $("ncModalSubhead").textContent = enabled
+      ? "Update matter details and save changes"
+      : "Matter # auto-assigned on save";
+    $("ncSave").textContent = enabled ? "Save changes" : "Save matter";
+    document.querySelectorAll(".intake-mode").forEach((b) => {
+      b.disabled = enabled;
+      b.classList.toggle("hidden", enabled);
+    });
+    if (enabled) switchMode("manual");
   }
 
   function applyFields(f) {
@@ -284,14 +341,33 @@
     }
   }
 
-  function openModal() {
-    ensureOptions().then(() => { resetForm(); modal.classList.remove("hidden"); });
+  function openCreateModal() {
+    ensureOptions().then(() => {
+      _editingCaseId = null;
+      resetForm();
+      modal.classList.remove("hidden");
+    });
+  }
+
+  function openEditModal(c) {
+    ensureOptions().then(() => {
+      resetForm();
+      _editingCaseId = c.id;
+      setEditMode(true, c.case_number || "");
+      applyFields(c);
+      modal.classList.remove("hidden");
+    });
   }
   function closeModal() { modal.classList.add("hidden"); }
 
-  $("newCaseBtn")?.addEventListener("click", openModal);
+  $("newCaseBtn")?.addEventListener("click", openCreateModal);
   $("ncClose")?.addEventListener("click", closeModal);
   $("ncCancel")?.addEventListener("click", closeModal);
+  editBtn?.addEventListener("click", () => {
+    if (!canEditMatters()) return;
+    if (!_detailCase) return;
+    openEditModal(_detailCase);
+  });
   modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
   document.querySelectorAll(".intake-mode").forEach(b =>
@@ -358,20 +434,24 @@
       summary: $("ncSummary").value.trim() || null,
     };
     const btn = $("ncSave");
+    const isEdit = _editingCaseId != null;
+    const saveLabel = isEdit ? "Save changes" : "Save matter";
     btn.disabled = true; btn.textContent = "Saving…";
     try {
-      const c = await LEXORA.api("/api/cases", {
-        method: "POST", body: JSON.stringify(payload),
+      const c = await LEXORA.api(isEdit ? `/api/cases/${_editingCaseId}` : "/api/cases", {
+        method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
       });
-      LEXORA.toast(`Matter ${c.case_number} created`);
+      LEXORA.toast(isEdit
+        ? `Matter ${c.case_number} updated`
+        : `Matter ${c.case_number} created`);
       closeModal();
       await load();
-      showDetail(c.id);
+      await showDetail(c.id);
     } catch (err) {
       setStatus("Save failed: " + err.message, "error");
     } finally {
-      btn.disabled = false; btn.textContent = "Save matter";
+      btn.disabled = false; btn.textContent = saveLabel;
     }
   });
 
@@ -381,6 +461,7 @@
 
   window.addEventListener("lexora:view", (e) => {
     if (e.detail.view === "cases") {
+      syncEditVisibility();
       if (detail.classList.contains("hidden")) {
         listCard?.classList.remove("hidden");
         casesView?.classList.remove("detail-open");
@@ -388,4 +469,6 @@
       load();
     }
   });
+
+  window.addEventListener("lexora:ready", syncEditVisibility);
 })();
