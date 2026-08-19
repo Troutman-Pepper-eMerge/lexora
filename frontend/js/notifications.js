@@ -124,9 +124,9 @@
   async function loadMatters() {
     try {
       const { cases } = await LEXORA.api("/api/cases");
-      _allMatters = cases || [];
-      nnMatters.innerHTML = cases.map(c =>
-        `<option value="${c.id}">${c.case_number} — ${c.title}</option>`
+      _allMatters = Array.isArray(cases) ? cases : [];
+      nnMatters.innerHTML = _allMatters.map(c =>
+        `<option value="${esc(c.id)}">${esc(c.case_number)} — ${esc(c.title)}</option>`
       ).join("");
 
       // Populate practice area dropdown
