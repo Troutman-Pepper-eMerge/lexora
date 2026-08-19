@@ -130,9 +130,9 @@
       ).join("");
 
       // Populate practice area dropdown
-      const practices = [...new Set(cases.map(c => c.practice_area).filter(Boolean))].sort();
+      const practices = [...new Set(_allMatters.map(c => c.practice_area).filter(Boolean))].sort();
       nnCondPractice.innerHTML = '<option value="">Any</option>' +
-        practices.map(p => `<option value="${p}">${p}</option>`).join("");
+        practices.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
     } catch (e) {
       console.error("Failed to load matters:", e);
     }
