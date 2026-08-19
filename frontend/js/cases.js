@@ -13,24 +13,13 @@
   const EDIT_ROLES = new Set(["Admin", "Partner", "Associate", "Paralegal"]);
 
   function canEditMatters() {
-    const role = window.LEXORA_PRINCIPAL && window.LEXORA_PRINCIPAL.role;
-    const canEdit = EDIT_ROLES.has(role);
-    console.log('[canEditMatters]', {role, canEdit, principal: window.LEXORA_PRINCIPAL});
-    return canEdit;
+    const role = window.LEXORA_PRINCIPAL?.role;
+    return EDIT_ROLES.has(role);
   }
 
   function syncEditVisibility() {
-    if (!editBtn) {
-      console.warn('[syncEditVisibility] editBtn not found');
-      return;
-    }
-    const can = canEditMatters();
-    console.log('[syncEditVisibility] can edit:', can);
-    if (can) {
-      editBtn.classList.remove("hidden");
-    } else {
-      editBtn.classList.add("hidden");
-    }
+    if (!editBtn) return;
+    editBtn.classList.toggle("hidden", !canEditMatters());
   }
   // Don't call on initial load - wait for principal to be ready
   // syncEditVisibility();
