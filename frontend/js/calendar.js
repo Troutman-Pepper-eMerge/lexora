@@ -197,8 +197,18 @@
   async function loadMattersDropdown() {
     try {
       const { cases } = await LEXORA.api("/api/cases");
-      naCase.innerHTML = '<option value="">Select a matter...</option>' +
-        cases.map(c => `<option value="${c.id}">${c.case_number} — ${c.title}</option>`).join("");
+      const list = Array.isArray(cases) ? cases : [];
+      naCase.innerHTML = "";
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "Select a matter...";
+      naCase.appendChild(blank);
+      list.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = String(c.id);
+        opt.textContent = `${c.case_number} — ${c.title}`;
+        naCase.appendChild(opt);
+      });
     } catch (e) {
       console.error("Failed to load matters:", e);
     }
