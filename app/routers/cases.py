@@ -56,6 +56,22 @@ class CaseCreate(BaseModel):
     summary: Optional[str] = None
 
 
+class CaseUpdate(BaseModel):
+    title: str
+    client_name: Optional[str] = None
+    practice_area: Optional[str] = None
+    case_type: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    court: Optional[str] = None
+    judge: Optional[str] = None
+    opposing_counsel: Optional[str] = None
+    filed_date: Optional[str] = None
+    estimated_value: Optional[float] = None
+    summary: Optional[str] = None
+
+
 @router.get("/intake-options")
 def intake_options(_: Principal = Depends(current_principal)):
     """Vocabularies for the New Case form dropdowns."""
@@ -158,16 +174,7 @@ def create_case(body: CaseCreate, db: Session = Depends(get_db),
     if not title:
         raise HTTPException(400, "title is required")
 
-    filed = None
-    if body.filed_date:
-        try:
-            filed = datetime.fromisoformat(body.filed_date.replace("Z", "")[:19])
-        except ValueError:
-            try:
-                filed = datetime.strptime(body.filed_date[:10], "%Y-%m-%d")
-            except ValueError:
-                filed = None
-    filed = filed or datetime.utcnow()
+    filed = _parse_filed_date(body.filed_date) or datetime.utcnow()
 
     case_number = _next_case_number(db)
     c = Case(
@@ -192,6 +199,55 @@ def create_case(body: CaseCreate, db: Session = Depends(get_db),
     audit(principal, "create_case", target=f"case:{c.id}",
           detail={"case_number": case_number, "title": title})
     return _serialize(c)
+
+
+@router.put("/{case_id}")
+def update_case(
+    case_id: int, body: CaseUpdate, db: Session = Depends(get_db),
+    principal: Principal = Depends(
+        require_roles("Partner", "Associate", "Paralegal", "Admin")),
+):
+    c = db.get(Case, case_id)
+    if not c:
+        raise HTTPException(404, "Case not found")
+
+    title = (body.title or "").strip()
+    if not title:
+        raise HTTPException(400, "title is required")
+
+    c.title = title
+    c.client_name = (body.client_name or "").strip() or None
+    c.practice_area = body.practice_area or None
+    c.case_type = body.case_type or None
+    c.status = body.status or "Open"
+    c.priority = body.priority or "Medium"
+    c.jurisdiction = body.jurisdiction or None
+    c.court = (body.court or "").strip() or None
+    c.judge = (body.judge or "").strip() or None
+    c.opposing_counsel = (body.opposing_counsel or "").strip() or None
+    c.summary = (body.summary or "").strip() or None
+    c.estimated_value = body.estimated_value
+    c.filed_date = _parse_filed_date(body.filed_date)
+
+    db.commit()
+    db.refresh(c)
+    ensure_case_events(db, c)
+    db.commit()
+    audit(principal, "update_case", target=f"case:{c.id}",
+          detail={"case_number": c.case_number, "title": c.title})
+    return _serialize(c)
+
+
+def _parse_filed_date(raw: Optional[str]) -> Optional[datetime]:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "")[:19])
+    except ValueError:
+        try:
+            return datetime.strptime(raw[:10], "%Y-%m-%d")
+        except ValueError:
+            return None
 
 
 def _coerce_value(raw: Any) -> Optional[float]:

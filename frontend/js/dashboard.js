@@ -92,7 +92,8 @@
   let _patterns = [];
 
   const esc = (s) => String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
   const renderPatterns = (list) => {
     const el = document.getElementById("patternList");

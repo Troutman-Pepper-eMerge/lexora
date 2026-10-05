@@ -7,11 +7,22 @@
   const progress = document.getElementById("uploadProgress");
   const tbody = document.querySelector("#docTable tbody");
 
+  // HTML escape helper to prevent XSS from user-controlled data
+  function esc(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function loadCases() {
     try {
       const { cases } = await LEXORA.api("/api/cases?limit=200");
       caseSel.innerHTML = '<option value="">No matter (general)</option>' +
-        cases.map(c => `<option value="${c.id}">${c.case_number} — ${c.title}</option>`).join("");
+        cases.map(c => `<option value="${c.id}">${esc(c.case_number)} — ${esc(c.title)}</option>`).join("");
     } catch {}
   }
 
@@ -19,14 +30,14 @@
     try {
       const { documents } = await LEXORA.api("/api/documents?limit=100");
       tbody.innerHTML = documents.map(d => `<tr>
-        <td>${d.filename}</td>
+        <td>${esc(d.filename)}</td>
         <td>${d.case_id ?? '—'}</td>
-        <td>${d.file_type || ''}</td>
+        <td>${esc(d.file_type) || ''}</td>
         <td>${d.pages || '—'}</td>
-        <td><span class="pill">${d.category || '—'}</span></td>
+        <td><span class="pill">${esc(d.category) || '—'}</span></td>
         <td>${d.indexed ? '✓' : '⏳'}</td>
-        <td class="muted" style="max-width:380px">${(d.summary||'').slice(0,180)}</td>
-        <td>${d.case_id ? `<button class="btn-ghost" data-id="${d.id}">Re-analyze</button>` : ''}</td>
+        <td class="muted" style="max-width:380px">${esc((d.summary||'').slice(0,180))}</td>
+        <td>${d.case_id ? `<button class="btn-ghost" data-id="${esc(d.id)}">Re-analyze</button>` : ''}</td>
       </tr>`).join("") || `<tr><td colspan="8" class="muted">No documents uploaded yet.</td></tr>`;
       tbody.querySelectorAll("button[data-id]").forEach(b => {
         b.addEventListener("click", async (e) => {
@@ -46,7 +57,14 @@
     const id = `up-${Date.now()}`;
     const item = document.createElement("div");
     item.className = "item"; item.id = id;
-    item.innerHTML = `<span>📄 ${file.name}</span><span class="muted">uploading…</span>`;
+    // Create elements programmatically to prevent XSS from malicious filenames
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `📄 ${file.name}`;  // textContent auto-escapes HTML
+    const statusSpan = document.createElement("span");
+    statusSpan.className = "muted";
+    statusSpan.textContent = "uploading…";
+    item.appendChild(nameSpan);
+    item.appendChild(statusSpan);
     progress.prepend(item);
 
     const fd = new FormData();

@@ -20,6 +20,7 @@ from .routers import cases as cases_router
 from .routers import chat as chat_router
 from .routers import documents as documents_router
 from .routers import notifications as notifications_router
+from .routers import notification_rules as notification_rules_router
 
 settings = get_settings()
 logging.basicConfig(
@@ -46,7 +47,8 @@ def _startup():
 # --- API routers ----
 for r in (auth_router.router, cases_router.router, documents_router.router,
           chat_router.router, analytics_router.router,
-          appointments_router.router, notifications_router.router):
+          appointments_router.router, notifications_router.router,
+          notification_rules_router.router):
     app.include_router(r)
 
 
@@ -75,7 +77,8 @@ def health_services():
             db.execute(_sql_text("SELECT 1"))
         services["database"] = {"status": "ok", "kind": "sqlite"}
     except Exception as exc:  # pragma: no cover - demo path
-        services["database"] = {"status": "down", "error": str(exc)}
+        logging.error("Database health check failed: %s", exc, exc_info=True)
+        services["database"] = {"status": "down", "error": "Database connection failed"}
 
     # --- Azure OpenAI (config-only check, no network call) ---
     aoai_ok = bool(settings.azure_openai_endpoint and settings.azure_openai_chat_deployment)
@@ -103,7 +106,8 @@ def health_services():
         stats = index_stats()
         services["vector_store"] = {"status": "ok", **stats}
     except Exception as exc:  # pragma: no cover
-        services["vector_store"] = {"status": "degraded", "error": str(exc)}
+        logging.error("Vector store health check failed: %s", exc, exc_info=True)
+        services["vector_store"] = {"status": "degraded", "error": "Vector store unavailable"}
 
     # --- MCP server (config only - no probe) ---
     services["mcp"] = {

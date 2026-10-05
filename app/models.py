@@ -99,6 +99,29 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class NotificationRule(Base):
+    """User-defined notification triggers and preferences with advanced conditions."""
+    __tablename__ = "notification_rules"
+    id = Column(Integer, primary_key=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    rule_name = Column(String(255))
+    trigger_type = Column(String(50), nullable=False)  # matter_assigned, status_changed, calendar_event, analytics_threshold, document_uploaded, etc.
+    trigger_conditions = Column(JSON)  # Complex conditions: {"and": [...], "or": [...], "status": "Trial", "priority": "High"}, {"matter_ids": [1,2,3]}, {"scope": "all_my_matters"}
+    channel = Column(String(20), nullable=False)  # email / sms / inapp
+    message_type = Column(String(30))  # custom_message / report_link / auto_summary
+    message_template = Column(Text)  # custom message body with placeholders like {matter_number}, {title}, {status}
+    report_path = Column(String(255))  # e.g., "/analytics/dashboard", "/matters/123"
+
+    # Advanced options
+    time_constraints = Column(JSON)  # e.g., {"business_hours_only": true, "weekdays_only": true, "timezone": "America/Los_Angeles"}
+    frequency_limit = Column(JSON)  # e.g., {"max_per_day": 5, "digest_mode": "daily", "quiet_hours": "22:00-08:00"}
+    condition_logic = Column(String(10), default="AND")  # AND / OR for combining trigger_conditions
+
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class CaseNote(Base):
     __tablename__ = "case_notes"
     id = Column(Integer, primary_key=True)

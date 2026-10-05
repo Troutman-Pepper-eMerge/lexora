@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import or_
 
 from ..database import session_scope
-from ..models import Appointment, Case, Document, Notification
+from ..models import Appointment, Case, Document, Notification, NotificationRule
 from ..vector_store import semantic_search
 
 
@@ -200,6 +200,121 @@ def send_notification(recipient_email: str, subject: str, body: str,
 
 
 # --------------------------------------------------------------------- #
+# Notification Rules (Event-driven subscriptions)                      #
+# --------------------------------------------------------------------- #
+def create_notification_rule(user_email: str, rule_name: str, trigger_type: str,
+                              channel: str, trigger_conditions: Optional[Dict] = None,
+                              message_type: str = "auto_summary",
+                              message_template: Optional[str] = None,
+                              report_path: Optional[str] = None) -> Dict[str, Any]:
+    """Create a new notification rule for event-driven alerts.
+
+    Args:
+        user_email: Email of user creating the rule
+        rule_name: Human-readable name (e.g., "Notify me of trial updates")
+        trigger_type: Event type - matter_assigned, status_changed, calendar_event,
+                     document_uploaded, analytics_threshold, matter_created
+        channel: Delivery channel - email, sms, inapp
+        trigger_conditions: Optional dict with filters like:
+            {"scope": "all_my_matters"} or {"matter_ids": [1,2,3]} or
+            {"status": "Trial", "priority": "High", "practice_area": "Litigation"}
+        message_type: auto_summary, custom_message, or report_link
+        message_template: Custom message with placeholders like {matter_number}, {title}
+        report_path: Path to report page if message_type is report_link
+    """
+    with session_scope() as db:
+        rule = NotificationRule(
+            user_email=user_email,
+            rule_name=rule_name,
+            trigger_type=trigger_type,
+            trigger_conditions=trigger_conditions or {},
+            channel=channel,
+            message_type=message_type,
+            message_template=message_template,
+            report_path=report_path,
+            enabled=True,
+        )
+        db.add(rule)
+        db.flush()
+        return {
+            "ok": True,
+            "rule_id": rule.id,
+            "rule_name": rule.rule_name,
+            "trigger_type": trigger_type,
+            "channel": channel,
+        }
+
+
+def list_notification_rules(user_email: str) -> Dict[str, Any]:
+    """List all notification rules for a user."""
+    with session_scope() as db:
+        rules = (db.query(NotificationRule)
+                .filter(NotificationRule.user_email == user_email)
+                .order_by(NotificationRule.created_at.desc())
+                .all())
+        return {
+            "count": len(rules),
+            "rules": [{
+                "id": r.id,
+                "rule_name": r.rule_name,
+                "trigger_type": r.trigger_type,
+                "trigger_conditions": r.trigger_conditions,
+                "channel": r.channel,
+                "message_type": r.message_type,
+                "enabled": r.enabled,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            } for r in rules]
+        }
+
+
+def update_notification_rule(rule_id: int, user_email: str,
+                              enabled: Optional[bool] = None,
+                              rule_name: Optional[str] = None,
+                              trigger_conditions: Optional[Dict] = None,
+                              channel: Optional[str] = None,
+                              message_template: Optional[str] = None) -> Dict[str, Any]:
+    """Update an existing notification rule. User can only update their own rules."""
+    with session_scope() as db:
+        rule = db.get(NotificationRule, rule_id)
+        if not rule or rule.user_email != user_email:
+            return {"error": f"Rule {rule_id} not found or access denied"}
+
+        if enabled is not None:
+            rule.enabled = enabled
+        if rule_name:
+            rule.rule_name = rule_name
+        if trigger_conditions is not None:
+            rule.trigger_conditions = trigger_conditions
+        if channel:
+            rule.channel = channel
+        if message_template is not None:
+            rule.message_template = message_template
+
+        return {
+            "ok": True,
+            "rule_id": rule_id,
+            "rule_name": rule.rule_name,
+            "enabled": rule.enabled,
+        }
+
+
+def delete_notification_rule(rule_id: int, user_email: str) -> Dict[str, Any]:
+    """Delete a notification rule. User can only delete their own rules."""
+    with session_scope() as db:
+        rule = db.get(NotificationRule, rule_id)
+        if not rule or rule.user_email != user_email:
+            return {"error": f"Rule {rule_id} not found or access denied"}
+
+        rule_name = rule.rule_name
+        db.delete(rule)
+        return {
+            "ok": True,
+            "deleted_rule": rule_name,
+            "rule_id": rule_id,
+        }
+
+
+# --------------------------------------------------------------------- #
 # Reports                                                               #
 # --------------------------------------------------------------------- #
 def generate_case_report(case_id: int) -> Dict[str, Any]:
@@ -255,6 +370,14 @@ TOOL_REGISTRY = {
         "Move an existing appointment and notify attendees."),
     "send_notification": (send_notification,
         "Queue a notification (email/sms/in-app)."),
+    "create_notification_rule": (create_notification_rule,
+        "Create event-driven notification rule with triggers and conditions."),
+    "list_notification_rules": (list_notification_rules,
+        "List all notification rules for a user."),
+    "update_notification_rule": (update_notification_rule,
+        "Update or enable/disable an existing notification rule."),
+    "delete_notification_rule": (delete_notification_rule,
+        "Delete a notification rule."),
     "generate_case_report": (generate_case_report,
         "Compile a structured report for a single case."),
     "portfolio_analytics": (portfolio_analytics,
