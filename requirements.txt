@@ -38,6 +38,6 @@ pandas==2.2.3
 numpy==1.26.4
 
 # ---- Auth ----
-PyJWT[crypto]==2.13.0
+PyJWT[crypto]==2.15.0
 itsdangerous==2.2.0
 msal==1.31.1
